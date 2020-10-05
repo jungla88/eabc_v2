@@ -1,7 +1,6 @@
 import numpy
 import random
 from statistics import mean
-import matplotlib.pyplot as plt
 
 class Clustering_MBSAS: # SpareBSAS
     def __init__(self, Lambda, theta_start,theta_step, theta_stop):
@@ -125,7 +124,6 @@ class Clustering_MBSAS: # SpareBSAS
         for theta in thetas:
             self.Theta = theta
             representatives1, clusters_v1 = self.fit(dataset, obj_metric, obj_representative)
-            Plot(representatives1, clusters_v1)
             l.append(len(representatives1))
             
             if l[i] == l[i-1]:
@@ -136,48 +134,3 @@ class Clustering_MBSAS: # SpareBSAS
         print('Theta',thetas2)
         
         return representatives1, clusters_v1
-
-def Plot(representatives,clusters_v):
-        # Calcolo cardinalità
-        cardinalita = []
-        for i in range(0,len(clusters_v)):
-            cardinalita.append(len(clusters_v[i]))
-    # divido clusters values e representatives in due vettori e divido lista clusters_v e representatives in nested list
-        x = []
-        y = []
-        x_r = []
-        y_r = []
-        for i in range(0,len(cardinalita)):
-            x.append([])
-            y.append([])
-            x_r.append([])
-            y_r.append([])
-        # estraggo coordinate x e y dei representatives
-        for i in range(0,len(representatives)):
-            for j in range(0,len(representatives[i])):
-                if j == 0:
-                    x_r[i].append(representatives[i][j])         
-                else:
-                    y_r[i].append(representatives[i][j])
-                            
-            
-        # estraggo coordinate x e y dei clusters
-        x = []
-        y = []
-        for i in range(0,len(clusters_v)):
-            x.append([])
-            y.append([])
-            for j in range(1,len(clusters_v[i])):
-                for k in range(0,2):
-                    if k == 0:
-                        x[i].append(clusters_v[i][j][k])         
-                    else:
-                        y[i].append(clusters_v[i][j][k])
-        #plot
-        fig, ax = plt.subplots(1,figsize=(7,5))
-        plt.xlabel('X')
-        plt.ylabel('Y')
-        plt.title('MBSAS')
-        for i in range(0,len(cardinalita)):
-            plt.scatter(x[i], y[i], s = 100)
-            plt.scatter(x_r[i],y_r[i], marker='*' ,s = 100,c = 'yellow')
