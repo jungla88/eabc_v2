@@ -1,1 +1,1 @@
-# Proj_Pattern_Recognition
+# Evolutive Agent Based Classifier version 2
