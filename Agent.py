@@ -17,7 +17,7 @@ class Agent:
     def execute(self,S_T,eta):
         self.Symbol_Threshold = S_T;
         self.eta = eta;
-        sample = self.AgentExtractor.Extract('iris_data.txt')
+        sample = self.AgentExtractor.Extract('iris_data.txt') # TODO: datasets must be initialized in extractor
         self.AgentGranulator = self.Granulator_Class(self.obj_metric, self.obj_representative, self.obj_clustering, self.Symbol_Threshold, self.eta) #Oggetto di classe Granulator
         self.AgentGranulator.Process(sample)
         
