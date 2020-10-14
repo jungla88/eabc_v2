@@ -2,18 +2,17 @@ import re
 import copy
 import ntpath
 import os.path as osp
-from numpy.random import permutation
+import numpy.random
 from inspect import isgenerator
 
+# def path_leaf(path):
+#     head, tail = ntpath.split(path)
+#     return tail or ntpath.basename(head)
 
-def path_leaf(path):
-    head, tail = ntpath.split(path)
-    return tail or ntpath.basename(head)
-
-def __repr__(obj):
-    if obj is None:
-        return 'None'
-    return re.sub('(<.*?)\\s.*(>)', r'\1\2', obj.__repr__())
+# def __repr__(obj):
+#     if obj is None:
+#         return 'None'
+#     return re.sub('(<.*?)\\s.*(>)', r'\1\2', obj.__repr__())
 
 
 class Dataset(object):
@@ -24,20 +23,22 @@ class Dataset(object):
         r"""Processes the dataset to the :obj:`self.processed_dir` folder."""
         raise NotImplementedError
 
-    def len(self):
-        raise NotImplementedError
 
-    def get(self, idx):
-        r"""Gets the data object at index :obj:`idx`."""
-        raise NotImplementedError
-
-    def __init__(self, path, transform=None, pre_transform=None):
+    def __len__(self):
+        r"""The number of examples in the dataset."""
+        return len(self._indices)
+        
+        
+    def __init__(self, path, transform=None, pre_transform=None, seed = None):
 
         self.transform = transform
         self.path = path
         self.pre_transform = pre_transform
-        self.__indices__ = None
-        self.data = None
+        self.data = []
+        self._indices = []
+
+        self.seed = seed
+        if self.seed is not None: numpy.random.seed(self.seed) 
 
         if isinstance(self.path, str):
             raw_path, filename = osp.split(osp.abspath(self.path))
@@ -45,27 +46,25 @@ class Dataset(object):
                 self._process()
             else:
                 raise IOError("File not found")
-
+        
+    @property
     def indices(self):
-        if self.__indices__ is not None:
-            return self.__indices__
-        else:
-            return range(len(self))
-
+        return self._indices
+    
+    def to_key(self,idx):
+        return self._indices[idx]
+    
     def _process(self):
         
         self.process()
         
-        # if self.pre_transform is not None:
-        #         data = map(self.pre_transform(), self.data)
-        #         self.data = list(data) if(isgenerator(self.data)) else data
-                
+        if self.pre_transform is not None:            
+            #TODO: check list of list issue
+                data = map(self.pre_transform(), self.data)
+                # self.data = list(data)
 
-    def __len__(self):
-        r"""The number of examples in the dataset."""
-        if self.__indices__ is not None:
-            return len(self.__indices__)
-        return self.len()
+        self._indices= list(range(len(self.data)))
+        
 
     def __getitem__(self, idx):
         r"""Gets the data object at index :obj:`idx` and transforms it (in case
@@ -74,33 +73,29 @@ class Dataset(object):
         tuple, will return a subset of the
         dataset at the specified indices."""
         if isinstance(idx, int):
-#            data = self.get(self.indices()[idx])
-            data = self.get(idx)
+            data = self.data[idx]
             data = data if self.transform is None else self.transform(data)
             return data
         else:
             return self.index_select(idx)
     
     def index_select(self, idx):
-        indices = self.indices()
+        indices = self._indices
 
         if isinstance(idx, slice):
             indices = indices[idx]
-            ##
             idx = list(range(idx.start,idx.stop))
-            ##
         elif isinstance(idx, list) or isinstance(idx, tuple):
             indices = [indices[i] for i in idx]
         else:
             raise IndexError(
-                'Only integers, slices (`:`), list, tuples, and long or bool '
-                'tensors are valid indices (got {}).'.format(
+                'Only integers, slices (`:`), list, tuples,'
+                '(got {}).'.format(
                     type(idx).__name__))
 
         dataset = copy.copy(self)
-#        dataset.data = [self.get(item) for item in indices]
-        dataset.data = [self.get(item) for item in idx]                        
-        dataset.__indices__ = indices
+        dataset.data = [self.data[item] for item in idx]                        
+        dataset._indices = indices
 
         return dataset
 
@@ -112,7 +107,8 @@ class Dataset(object):
                 additionally return the random permutation used to shuffle the
                 dataset. (default: :obj:`False`)
         """
-        perm = (permutation(len(self))).tolist()
+
+        perm = (numpy.random.permutation(len(self))).tolist()
         dataset = self.index_select(perm)
         return (dataset, perm) if return_perm is True else dataset
 
