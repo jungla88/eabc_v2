@@ -1,18 +1,12 @@
 import re
 import copy
-import ntpath
 import os.path as osp
 import numpy.random
-from inspect import isgenerator
 
-# def path_leaf(path):
-#     head, tail = ntpath.split(path)
-#     return tail or ntpath.basename(head)
-
-# def __repr__(obj):
-#     if obj is None:
-#         return 'None'
-#     return re.sub('(<.*?)\\s.*(>)', r'\1\2', obj.__repr__())
+def __repr__(obj):
+    if obj is None:
+        return 'None'
+    return re.sub('(<.*?)\\s.*(>)', r'\1\2', obj.__repr__())
 
 
 class Dataset(object):
@@ -27,7 +21,10 @@ class Dataset(object):
     def __len__(self):
         r"""The number of examples in the dataset."""
         return len(self._indices)
-        
+
+    def __repr__(self):
+        #TODO: need attention
+        return f'{self.__class__.__name__}({len(self)})'        
         
     def __init__(self, path, transform=None, pre_transform=None, seed = None):
 
@@ -35,7 +32,7 @@ class Dataset(object):
         self.path = path
         self.pre_transform = pre_transform
         self.data = []
-        self._indices = []
+        self._indices = []     
 
         self.seed = seed
         if self.seed is not None: numpy.random.seed(self.seed) 
@@ -46,6 +43,7 @@ class Dataset(object):
                 self._process()
             else:
                 raise IOError("File not found")
+    
         
     @property
     def indices(self):
@@ -59,9 +57,7 @@ class Dataset(object):
         self.process()
         
         if self.pre_transform is not None:            
-            #TODO: check list of list issue
-                data = map(self.pre_transform(), self.data)
-                # self.data = list(data)
+                self.data = list(map(self.pre_transform, self.data))
 
         self._indices= list(range(len(self.data)))
         
@@ -73,7 +69,7 @@ class Dataset(object):
         tuple, will return a subset of the
         dataset at the specified indices."""
         if isinstance(idx, int):
-            data = self.data[idx]
+            data = copy.copy(self.data[idx]) #TODO: shallow copy necessary?
             data = data if self.transform is None else self.transform(data)
             return data
         else:
@@ -111,6 +107,3 @@ class Dataset(object):
         perm = (numpy.random.permutation(len(self))).tolist()
         dataset = self.index_select(perm)
         return (dataset, perm) if return_perm is True else dataset
-
-    def __repr__(self):
-        return f'{self.__class__.__name__}({len(self)})'
