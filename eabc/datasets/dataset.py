@@ -59,7 +59,14 @@ class Dataset(object):
     def data(self):
         return NotImplementedError
 
+    #Return all labels in dataset
+    #Assume Data.x and Data.y. Bad?
+    def labels(self):
+        return list(map(lambda x: x.y, self._data))
         
+    def unique_labels(self):
+        return set(map(lambda x: x.y, self._data))
+    
     def to_key(self,idx):
         return self._indices[idx]
     
