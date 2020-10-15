@@ -3,10 +3,10 @@ import copy
 import os.path as osp
 import numpy.random
 
-def __repr__(obj):
-    if obj is None:
-        return 'None'
-    return re.sub('(<.*?)\\s.*(>)', r'\1\2', obj.__repr__())
+# def __repr__(obj):
+#     if obj is None:
+#         return 'None'
+#     return re.sub('(<.*?)\\s.*(>)', r'\1\2', obj.__repr__())
 
 
 class Dataset(object):
@@ -22,16 +22,18 @@ class Dataset(object):
         r"""The number of examples in the dataset."""
         return len(self._indices)
 
-    def __repr__(self):
-        #TODO: need attention
-        return f'{self.__class__.__name__}({len(self)})'        
+    # def __repr__(self):
+    #     #TODO: need attention
+    #     return f'{self.__class__.__name__}({len(self)})'        
         
     def __init__(self, path, transform=None, pre_transform=None, seed = None):
 
         self.transform = transform
         self.path = path
         self.pre_transform = pre_transform
-        self.data = []
+        
+        #
+        self._data = []
         self._indices = []     
 
         self.seed = seed
@@ -46,9 +48,18 @@ class Dataset(object):
     
         
     @property
+    #Return the keys of data object assigned when loading data
+    #TODO: property is necessary?
     def indices(self):
         return self._indices
     
+    @property
+    #Return all the data in class. It can be specified in the derived dataset. 
+    #E.g. for vector dataset can return a matrix 
+    def data(self):
+        return NotImplementedError
+
+        
     def to_key(self,idx):
         return self._indices[idx]
     
@@ -57,9 +68,9 @@ class Dataset(object):
         self.process()
         
         if self.pre_transform is not None:            
-                self.data = list(map(self.pre_transform, self.data))
+                self._data = list(map(self.pre_transform, self._data))
 
-        self._indices= list(range(len(self.data)))
+        self._indices= list(range(len(self._data)))
         
 
     def __getitem__(self, idx):
@@ -69,7 +80,7 @@ class Dataset(object):
         tuple, will return a subset of the
         dataset at the specified indices."""
         if isinstance(idx, int):
-            data = copy.copy(self.data[idx]) #TODO: shallow copy necessary?
+            data = copy.copy(self._data[idx]) #TODO: shallow copy necessary?
             data = data if self.transform is None else self.transform(data)
             return data
         else:
@@ -79,8 +90,16 @@ class Dataset(object):
         indices = self._indices
 
         if isinstance(idx, slice):
+            start = idx.start if idx.start is not None else 0
+            stop = idx.stop if idx.stop is not None else len(self._data)
+
             indices = indices[idx]
-            idx = list(range(idx.start,idx.stop))
+            idx = list(range(start,stop))
+
+            # idx = list(range(idx.start,idx.stop))
+            # indices = indices[idx]
+            # idx = list(range(idx.start,idx.stop))
+
         elif isinstance(idx, list) or isinstance(idx, tuple):
             indices = [indices[i] for i in idx]
         else:
@@ -90,7 +109,7 @@ class Dataset(object):
                     type(idx).__name__))
 
         dataset = copy.copy(self)
-        dataset.data = [self.data[item] for item in idx]                        
+        dataset._data = [self._data[item] for item in idx]                        
         dataset._indices = indices
 
         return dataset

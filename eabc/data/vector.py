@@ -6,13 +6,13 @@ Created on Wed Oct 14 11:34:15 2020
 @author: luca
 """
 
-from Data import Data
+from eabc.data import Data
 from numpy import ndarray,array
 
-class vectorData(Data):
+class Vector(Data):
     
     def __init__(self):
-        super(vectorData,self).__init__()
+        super(Vector,self).__init__()
 
     @Data.x.setter 
     def x(self, value):
@@ -22,7 +22,7 @@ class vectorData(Data):
         elif isinstance(value,list) or isinstance(value,tuple):
             self._x = array(value)
         else:
-            raise TypeError("Only numpy.ndarray, list or tuple accepted for vectorData")
+            raise TypeError("Only numpy.ndarray, list or tuple accepted for Vector object data type")
 
     @Data.y.setter 
     def y(self, value):

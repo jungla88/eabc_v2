@@ -1,11 +1,7 @@
 # -*- coding: utf-8 -*-
 
-'''
-
-'''
-
-from Dataset import Dataset
-from vectorData import vectorData
+from eabc.datasets import Dataset
+from eabc.data import Vector
 
 class vectorDataset(Dataset):
     
@@ -23,10 +19,17 @@ class vectorDataset(Dataset):
         examples,classes =self.reader(self.path)
         reader_out =zip(examples,classes)
         for x,y in reader_out:
-            data = vectorData()
+            data = Vector()
             data.x = x
             data.y = y
-            self.data.append(data)
+            self._data.append(data)
+        
+    """
+    Return all data examples in numpy array object
+    """    
+    @Dataset.data.getter
+    def data(self):
+        return list(map(lambda x: x.x, self._data))
         
 
     def __repr__(self):
