@@ -2,7 +2,7 @@ from pandas import read_csv
 from eabc.datasets import vectorDataset
 import numpy 
 
-#Reader must take a path as argument. Might be a file with raw data or a folder with multiples file to read
+#Reader must take a path as argument. Might be a file with raw data or a folder with multiple files to read
 #Return two iterables:
 #1- x examples such that elements in x define the basic datastructure
 #2- y labels defined ground truth. No encoding will apply later
@@ -53,3 +53,6 @@ s = data3.shuffle()
 s1 = data3[0:50]
 s2 = data3[50:100]
 s3 = data3[100:]
+
+rawDat_s1,rawLabels_s1 = [s1.data,s1.labels]
+rawDat_s2,rawLabels_s2 = [s2.data,s2.labels]
