@@ -54,13 +54,13 @@ class Dataset(object):
         return self._indices
     
     @property
-    #Return all the data in class. It can be specified in the derived dataset. 
-    #E.g. for vector dataset can return a matrix 
+    #Return all the raw data in dataset. It can be specified in the derived dataset. 
     def data(self):
-        return NotImplementedError
+        return list(map(lambda x: x.x, self._data))
 
     #Return all labels in dataset
     #Assume Data.x and Data.y. Bad?
+    @property
     def labels(self):
         return list(map(lambda x: x.y, self._data))
         
@@ -102,10 +102,6 @@ class Dataset(object):
 
             indices = indices[idx]
             idx = list(range(start,stop))
-
-            # idx = list(range(idx.start,idx.stop))
-            # indices = indices[idx]
-            # idx = list(range(idx.start,idx.stop))
 
         elif isinstance(idx, list) or isinstance(idx, tuple):
             indices = [indices[i] for i in idx]

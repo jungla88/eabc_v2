@@ -23,14 +23,7 @@ class vectorDataset(Dataset):
             data.x = x
             data.y = y
             self._data.append(data)
-        
-    """
-    Return all data examples in numpy array object
-    """    
-    @Dataset.data.getter
-    def data(self):
-        return list(map(lambda x: x.x, self._data))
-        
+              
 
     def __repr__(self):
         return '{}{}()'.format(self.__class__.__name__, self.name.capitalize())
