@@ -1,13 +1,17 @@
+"""
+From Dortmund repository
+
+"""
+
+
 from os import path
 import networkx as nx
 
 
 def tud_to_networkx(ds_name):
-    #TODO: edit way to join dir
     current_path = path.dirname(path.realpath(__file__))
     ds_path = path.join(current_path,ds_name)
     ds_name = path.join(ds_path, ds_name )
-#    print(path.dirname(path.realpath(__file__)))
     with open(ds_name + "_graph_indicator.txt", "r") as f:
         graph_indicator = [int(i) - 1 for i in list(f)]
     f.closed
@@ -58,7 +62,8 @@ def tud_to_networkx(ds_name):
         i = 0
         for g in graph_db:
             for v in range(g.number_of_nodes()):
-                g.nodes[v]['labels'] = node_labels[i]
+                g.nodes[v]['labels'] = list(node_labels[i])                
+#                g.nodes[v]['labels'] = node_labels[i]
                 i += 1
 
     # Node Attributes.
@@ -70,7 +75,9 @@ def tud_to_networkx(ds_name):
         i = 0
         for g in graph_db:
             for v in range(g.number_of_nodes()):
-                g.nodes[v]['attributes'] = node_attributes[i]
+                #edited. Probably worked for python2
+                g.nodes[v]['attributes'] = list(node_attributes[i])
+                # g.nodes[v]['attributes'] = node_attributes[i]
                 i += 1
 
     # Edge Labels.
@@ -82,7 +89,8 @@ def tud_to_networkx(ds_name):
         i = 0
         for g in graph_db:
             for e in range(g.number_of_edges()):
-                g.edges[edge_list[i]]['labels'] = edge_labels[i]
+                g.edges[edge_list[i]]['labels'] = list(edge_labels[i])
+#                g.edges[edge_list[i]]['labels'] = edge_labels[i]
                 i += 1
 
     # Edge Attributes.
@@ -94,7 +102,8 @@ def tud_to_networkx(ds_name):
         i = 0
         for g in graph_db:
             for e in range(g.number_of_edges()):
-                g.edges[edge_list[i]]['attributes'] = edge_attributes[i]
+                g.edges[edge_list[i]]['attributes'] = list(edge_attributes[i])                
+#                g.edges[edge_list[i]]['attributes'] = edge_attributes[i]
                 i += 1
 
     # Classes.
@@ -104,7 +113,8 @@ def tud_to_networkx(ds_name):
         f.closed
         i = 0
         for g in graph_db:
-            g.graph['classes'] = classes[i]
+#            g.graph['classes'] = classes[i]
+            g.graph['classes'] = next(classes[i])
             i += 1
 
     # Targets.
@@ -114,7 +124,8 @@ def tud_to_networkx(ds_name):
         f.closed
         i = 0
         for g in graph_db:
-            g.graph['targets'] = targets[i]
+#            g.graph['targets'] = targets[i]            
+            g.graph['targets'] = next(targets[i])
             i += 1
 
     return graph_db

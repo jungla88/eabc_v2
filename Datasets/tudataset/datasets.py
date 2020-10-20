@@ -23,7 +23,6 @@ cleaned_URL = ('https://raw.githubusercontent.com/nd7141/'
                    'graph_datasets/master/datasets')
 
 
-# Download dataset, regression problem=False, multi-target regression=False.
 def get_dataset(dataset, regression=False, multi_target_regression=False):
     print(osp.dirname(osp.realpath(__file__)))
     path = osp.dirname(osp.realpath(__file__))
@@ -39,7 +38,6 @@ def download(root,name,cleaned = False):
         raw_dir = osp.join(root, name, name)
         copy_tree(raw_dir, folder)
         shutil.rmtree(raw_dir)
-#        os.rename(osp.join(folder, name), raw_dir)
 
 
 def download_url(url, folder, log=True):
