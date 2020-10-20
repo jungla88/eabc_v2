@@ -16,6 +16,9 @@ class Dataset(object):
     def process(self):
         r"""Processes the dataset to the :obj:`self.processed_dir` folder."""
         raise NotImplementedError
+        
+    def add_keyVal(self,data,idx):
+        raise NotImplementedError
 
 
     def __len__(self):
@@ -49,15 +52,15 @@ class Dataset(object):
         
     @property
     #Return the keys of data object assigned when loading data
-    #TODO: property is necessary?
     def indices(self):
-        return self._indices
+        return self._indices            
     
     @property
     #Return all the raw data in dataset. It can be specified in the derived dataset. 
     def data(self):
         return list(map(lambda x: x.x, self._data))
 
+        
     #Return all labels in dataset
     #Assume Data.x and Data.y. Bad?
     @property
@@ -87,8 +90,7 @@ class Dataset(object):
         tuple, will return a subset of the
         dataset at the specified indices."""
         if isinstance(idx, int):
-            data = copy.copy(self._data[idx]) #TODO: shallow copy necessary?
-            data = data if self.transform is None else self.transform(data)
+            data = self._data[idx] if self.transform is None else self.transform(copy.copy(self._data[idx])) #Need shallow copy?
             return data
         else:
             return self.index_select(idx)
