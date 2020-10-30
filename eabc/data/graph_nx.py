@@ -22,6 +22,8 @@ class Graph_nx(Data):
     def __len__(self):
         return len(self._x)
     
+    #from https://networkx.org/documentation/stable/reference/classes/generated/networkx.Graph.copy.html
+    #Indipendent shallow copy
     def __copy__(self):
         class_ = self.__class__
         newDataGraph_nx = class_.__new__(class_)
