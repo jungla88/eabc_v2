@@ -25,5 +25,12 @@ class vectorDataset(Dataset):
             self._data.append(data)
               
 
+    def add_keyVal(self,idx,data):
+        if isinstance(data,Vector):
+            self._data.append(data)
+            self._indices.append(idx)
+        else:
+            raise ValueError("Invalid data inserted")
+    
     def __repr__(self):
         return '{}{}()'.format(self.__class__.__name__, self.name.capitalize())
