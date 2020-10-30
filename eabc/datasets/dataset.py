@@ -17,7 +17,7 @@ class Dataset(object):
         r"""Processes the dataset to the :obj:`self.processed_dir` folder."""
         raise NotImplementedError
         
-    def add_keyVal(self,data,idx):
+    def add_keyVal(self,idx,data):
         raise NotImplementedError
 
 
@@ -53,12 +53,19 @@ class Dataset(object):
     @property
     #Return the keys of data object assigned when loading data
     def indices(self):
-        return self._indices            
+        return self._indices
+    @indices.deleter
+    def indices(self):
+        self._indices.clear()            
     
     @property
     #Return all the raw data in dataset. It can be specified in the derived dataset. 
     def data(self):
         return list(map(lambda x: x.x, self._data))
+    
+    @data.deleter
+    def data(self):
+        self._data.clear()
 
         
     #Return all labels in dataset
