@@ -9,10 +9,14 @@ import numpy
 import copy
 class Extractor:
     
-    def __init__(self, strategy, seed = 0):
+    def __init__(self, strategy, seed = None):
         
         self.extr_strategy = strategy
-        self.seed = seed;
+        self._seed = seed;
+        if self._seed:
+            numpy.random.seed(seed)
+
+            
     
     def extract(self,pattern):
         substruct = self.extr_strategy(pattern)
@@ -24,8 +28,8 @@ class Extractor:
         
         #TODO: deepcopy necessary. Copy memo and avoid data and indices?
         substruct_Dataset = copy.deepcopy(dataset)
-        substruct_Dataset.data.clear()
-        substruct_Dataset.indices.clear()
+        del substruct_Dataset.data
+        del substruct_Dataset.indices
         
         for i in range(W):
             idx = numpy.random.randint(0,len(dataset))
