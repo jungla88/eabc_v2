@@ -23,10 +23,10 @@ Baldini, Luca et al. "Stochastic information granules extraction for graph embed
 """
 
 from copy import deepcopy
-from eabc.metrics import Metric
+from eabc.dissimilarities import Dissimilarity
 import numpy as np
 
-class BMF(Metric):
+class BMF(Dissimilarity):
 
     def __init__(self, nodeDiss, edgeDiss):
 
@@ -38,7 +38,7 @@ class BMF(Metric):
         self.nodesParam = {'sub': 1.0, 'del': 1.0, 'ins': 1.0}
         self.edgesParam = {'sub': 1.0, 'del': 1.0, 'ins': 1.0}
 
-    def diss(self, g1, g2):
+    def __call__(self, g1, g2):
 
         """ node Best Match First """
 
@@ -137,10 +137,10 @@ class BMF(Metric):
 
         return 0.5 * (vertexDiss_norm + edgeDiss_norm)
 
-    def pdist(self, set1, set2):
-        M = np.zeros(shape= (len(set1),len(set2)))
+    def pdist(self, set1):
+        M = np.zeros(shape= (len(set1),len(set1)))
         for i,g1 in enumerate(set1):
-            row = [self.diss(g1,g2) for g2 in set2]
+            row = [self.__call__(g1,g2) for g2 in set1]
             M[i]= row;
         return M
         

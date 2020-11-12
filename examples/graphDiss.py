@@ -8,7 +8,7 @@ import itertools
 
 from eabc.extractors import Extractor
 from eabc.extractors import randomwalk_restart
-from eabc.metrics import GED
+from eabc.dissimilarities import GED
 
 
 # datasets.get_dataset("Mutagenicity")
@@ -43,6 +43,6 @@ smallD = data1[1:10]
 subgraphs = subgraph_extr.randomExtractDataset(smallD, 50 )
 distance_function = GED.BMF(nodeDissimilarity, edgeDissimilarity)
 
-x = distance_function.diss(subgraphs[0].x,subgraphs[1].x)
+x = distance_function(subgraphs[0].x,subgraphs[1].x)
 
-M = distance_function.pdist(subgraphs.data,subgraphs.data)
+#M = distance_function.pdist(subgraphs.data,subgraphs.data)
