@@ -16,6 +16,7 @@ class graph_nxDataset(Dataset):
         super(graph_nxDataset,self).__init__(self.path, self.transform, self.pre_transform)
         
     def process(self):
+        #TODO: change for loading from memory
         examples,classes =self.reader(self.path)
         reader_out =zip(examples,classes)
         for x,y in reader_out:
