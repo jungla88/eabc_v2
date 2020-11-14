@@ -42,16 +42,16 @@ class HierchicalAggl(Granulator):
         
         super(HierchicalAggl,self).__init__()
         
-    def granulate(self,data):
+    def granulate(self,Dataset):
         
-        gapk = self._gapStatEvaluator.evaluateGap(data)
+        gapk = self._gapStatEvaluator.evaluateGap(Dataset.data)
         bestK = np.argmax(gapk)
         
         #TODO:naive
         clustersLabels = self._gapStatEvaluator.solutions[bestK+1]
         
         #FIXME: wrong result
-        reprElems = [self._representation(data[l == clustersLabels], self._distanceFunction) for l in range(bestK+1)]
+        reprElems = [self._representation(Dataset.data[l == clustersLabels], self._distanceFunction) for l in range(bestK+1)]
         
         self.repr = reprElems
         #avg distance
