@@ -44,8 +44,7 @@ mask = [1,0,0,1]
 strat.mask= mask
 
 
-substruct_Dataset = copy.deepcopy(smallDat)
-del substruct_Dataset.indices
-del substruct_Dataset.data
+substruct_Dataset = smallDat.fresh_dpcopy()
+
 for i,p in zip(smallDat.indices,smallDat):
     substruct_Dataset.add_keyVal(i,substruct_extr.extract(p))
