@@ -10,7 +10,7 @@ def medoid(cluster,dissimilarity):
     if scDist.is_valid_y(pairwise_dist):
         pairwise_dist = scDist.squareform(pairwise_dist)
         
-    medoidIdx = np.argmin(np.sum(pairwise_dist),axis=0)
+    medoidIdx = np.argmin(np.sum(pairwise_dist, axis = 0))
     
     return cluster[medoidIdx]
         
