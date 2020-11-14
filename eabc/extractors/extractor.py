@@ -27,9 +27,11 @@ class Extractor:
         substruct_set, idx = [None] * W , [None] * W
         
         #TODO: deepcopy necessary. Copy memo and avoid data and indices?
-        substruct_Dataset = copy.deepcopy(dataset)
-        del substruct_Dataset.data
-        del substruct_Dataset.indices
+        # substruct_Dataset = copy.deepcopy(dataset)
+        # del substruct_Dataset.data
+        # del substruct_Dataset.indices
+        
+        substruct_Dataset = dataset.fresh_dpcopy()
         
         for i in range(W):
             idx = numpy.random.randint(0,len(dataset))
