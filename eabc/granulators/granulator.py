@@ -24,7 +24,7 @@ class Granulator:
     def symbols(self):
         return self._symbols
 
-    def granulate(self):
+    def granulate(self,data):
         raise NotImplementedError
         
     def __addSymbol(self,granule):
