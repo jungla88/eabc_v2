@@ -1,5 +1,9 @@
 # data
-Datasets/data
+Datasets/tudataset/COIL*
+Datasets/tudataset/Mutag*
+Datasets/tudataset/Letter*
+Datasets/tudataset/SYN*
+Datasets/iris
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
