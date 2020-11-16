@@ -147,4 +147,4 @@ class GapStatistic:
         self._minValCols = np.min(data, axis = 0, keepdims = True)
         self._maxValCols = np.max(data, axis = 0, keepdims = True)
         
-        self._referenceSets = [np.zeros((data.shape[0],data.shape[1])) for _ in range(self.n_refs)]
+       # self._referenceSets = [np.zeros((data.shape[0],data.shape[1])) for _ in range(self.n_refs)]

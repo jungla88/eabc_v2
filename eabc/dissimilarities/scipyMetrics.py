@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 
 from eabc.dissimilarities import Dissimilarity
-from scipy.spatial.distance import sqeuclidean, pdist,squareform
+import scipy.spatial.distance as ssd
+from numpy import sqrt
 class scipyMetrics(Dissimilarity):
     
     def __init__(self, metricTypeStr, w = None):
@@ -10,15 +11,19 @@ class scipyMetrics(Dissimilarity):
         
         self._metricType = metricTypeStr
         
+        if self._metricType == 'euclidean':
+            self.diss = ssd.euclidean
+        
     def __call__(self, u, v):
         
-        d = sqeuclidean(u,v,self._weight)
+        d = self.diss(u,v,self._weight)
         
-        return d
+        #TODO: possibili problemi con numero di feature e weight
+        return d/sqrt(len(u))
     
     def pdist(self, set1):
         
-        return squareform(pdist(set1, self._metricType))
+        return ssd.squareform(ssd.pdist(set1, self._metricType))
         
     
         

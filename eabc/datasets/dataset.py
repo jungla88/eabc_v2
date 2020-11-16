@@ -144,8 +144,10 @@ class Dataset(object):
     
     def fresh_dpcopy(self):
         
-        dataset = copy.deepcopy(self)
-        del dataset.data
-        del dataset.indices
+        dataset = self.__new__(self.__class__)
+                
+        # dataset = copy.deepcopy(self)
+        # del dataset.data
+        # del dataset.indices
         
         return dataset

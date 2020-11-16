@@ -5,18 +5,24 @@ from eabc.data import Graph_nx
 
 class graph_nxDataset(Dataset):
     
-    def __init__(self, path, name, reader, transform = None, pre_transform = None):
+    def __init__(self, targetObject, name, reader= None, transform = None, pre_transform = None):
         
         self.name = name
         self.reader = reader
-        self.path = path
+        self.tObject = targetObject
         self.transform = transform;
         self.pre_transform = pre_transform
         
         super(graph_nxDataset,self).__init__(self.path, self.transform, self.pre_transform)
         
     def process(self):
-        #TODO: change for loading from memory
+      
+        if (self.tObject and self.reader):
+            examples,classes =self.reader(self.tObject)
+        else:
+            #TODO: two lists or arrays with examples and classes as input. Extend to other data structures
+            examples, classes = self.tObject[0],self.tObject[1]
+            
         examples,classes =self.reader(self.path)
         reader_out =zip(examples,classes)
         for x,y in reader_out:

@@ -5,10 +5,10 @@ class Granule:
     
     def __init__(self, Representative,
                  DissimilarityMeasure,
-                 Quality = 0,
                  Fvalue = None,
                  cardinality = None,
-                 avgDispersion = None):
+                 avgDispersion = None,
+                 Quality = 0):
                  #eta = 0.5):
 
         self._DissimilarityMeasure = DissimilarityMeasure 
@@ -97,6 +97,4 @@ class Granule:
     #Induce total ordering for SortedList
     #Equality is left to id(object1) == id(object2)
     def __lt__(self,other):
-        return self._Quality < other.quality
-    #Should we prove "other" is instance of Granule class?    
-        
+        return self._Quality < other.quality        
