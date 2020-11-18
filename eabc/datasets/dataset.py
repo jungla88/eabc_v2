@@ -142,9 +142,24 @@ class Dataset(object):
         dataset = self.index_select(perm)
         return (dataset, perm) if return_perm is True else dataset
     
+    r""" Create new Dataset object with null data and indices attribute. 
+    
+    Return a Dataset with empty data. Only transform and seed is copied from the original Dataset
+    
+    """
     def fresh_dpcopy(self):
         
         dataset = self.__new__(self.__class__)
+        
+        dataset.transform = self.transform
+#        self.pre_transform = pre_transform
+        
+        #
+        dataset._data = []
+        dataset._indices = []     
+
+        dataset.seed = self.seed
+        if self.seed is not None: numpy.random.seed(self.seed) 
                 
         # dataset = copy.deepcopy(self)
         # del dataset.data

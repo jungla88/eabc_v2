@@ -13,7 +13,7 @@ class graph_nxDataset(Dataset):
         self.transform = transform;
         self.pre_transform = pre_transform
         
-        super(graph_nxDataset,self).__init__(self.path, self.transform, self.pre_transform)
+        super(graph_nxDataset,self).__init__(self.tObject, self.transform, self.pre_transform)
         
     def process(self):
       
@@ -23,7 +23,7 @@ class graph_nxDataset(Dataset):
             #TODO: two lists or arrays with examples and classes as input. Extend to other data structures
             examples, classes = self.tObject[0],self.tObject[1]
             
-        examples,classes =self.reader(self.path)
+        examples,classes =self.reader(self.tObject)
         reader_out =zip(examples,classes)
         for x,y in reader_out:
             data = Graph_nx()
