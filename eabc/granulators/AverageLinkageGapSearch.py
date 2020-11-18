@@ -32,7 +32,7 @@ class HierchicalAggl(Granulator):
     def __init__(self,DistanceFunction,clusterRepresentative):
         
         self._distanceFunction = DistanceFunction
-        self._representation = clusterRepresentative #An object for evaluate the representative
+        self._representation = clusterRepresentative #A class containing the definition of representative
         
         #TODO: pdist
         self._clusteringMethod = AgglWrapper(affinity=self._distanceFunction.pdist)
@@ -51,18 +51,25 @@ class HierchicalAggl(Granulator):
         bestK = np.argmax(gapk)+1
         
         clustersLabels = self._gapStatEvaluator.solutions[bestK]
+ 
+        reprElems = []
+        for l in range(bestK):
+            reprItem = self._representation()
+            reprItem.evaluate(Dataset.data[l == clustersLabels], self._distanceFunction)
+            reprElems.append(reprItem)
        
-        reprElems = [self._representation(Dataset.data[l == clustersLabels], self._distanceFunction) for l in range(bestK)]
+#        reprElems = [self._representation().evaluate(Dataset.data[l == clustersLabels], self._distanceFunction)._representativeElem
+#                     for l in range(bestK)]
                 
         #Evaluation - Lower is better
         normalizeCard = [1-(clustersLabels.tolist().count(l)/len(Dataset.data)) 
                          if clustersLabels.tolist().count(l)>1 else 1 for l in range(bestK)]
-        normalizeComp = [reprElems[l][1]/(clustersLabels.tolist().count(l)-1) 
+        normalizeComp = [reprElems[l]._SOD/(clustersLabels.tolist().count(l)-1) 
                          if clustersLabels.tolist().count(l)>1 else 1 for l in range(bestK)]
         
         for i,repres in enumerate(reprElems):
             F = super(HierchicalAggl,self)._evaluateF(normalizeComp[i],normalizeCard[i])
-            newGr = Granule(repres[0],self._distanceFunction,F,normalizeCard[i],normalizeComp[i])
+            newGr = Granule(repres._representativeElem,self._distanceFunction,F,normalizeCard[i],normalizeComp[i])
             super(HierchicalAggl,self)._addSymbol(newGr)
                 
             
