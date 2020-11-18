@@ -5,4 +5,5 @@ import eabc.datasets
 import eabc.extractors
 import eabc.granulators
 import eabc.dissimilarities
+import eabc.representatives
 import eabc.extras
