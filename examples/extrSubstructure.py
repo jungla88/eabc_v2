@@ -38,7 +38,7 @@ data3 = vectorDataset("/home/luca/Documenti/Progetti/E-ABC_v2/eabc_v2/Datasets/i
 
 strat = features_selection.extr_strategy()
 substruct_extr = Extractor(strat)
-smallDat = data3[1:10]
+smallDat = data3[3,6,8,10,11,16,17,18,20,139,140]
 mask = [1,0,0,1]
 
 strat.mask= mask
