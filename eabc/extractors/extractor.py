@@ -22,8 +22,10 @@ class Extractor:
         substruct = self.extr_strategy(pattern)
         return substruct
         
-    def randomExtractDataset(self, dataset, W):
-        
+    #FIXME: It should not be used in embedding. 
+    #substruct ID may not be the same of the structure from which it is extracted
+    
+    def randomExtractDataset(self, dataset, W):       
         substruct_set, idx = [None] * W , [None] * W
         
         #TODO: deepcopy necessary. Copy memo and avoid data and indices?
@@ -35,8 +37,14 @@ class Extractor:
         
         for i in range(W):
             idx = numpy.random.randint(0,len(dataset))
-            substruct_Dataset.add_keyVal(idx, self.extract(dataset[idx]))            
-            #substruct_set.data(self.extract(dataset[idx]), idx )
+            #debug
+            g = self.extract(dataset[idx])
+            if g:
+                substruct_Dataset.add_keyVal(idx, g)
+            #--
+            #TODO:verificare add_keyVal(dataset.tokey(idx),self.extract...)
+
+            #substruct_Dataset.add_keyVal(idx, self.extract(dataset[idx]))            
             
         return substruct_Dataset
             

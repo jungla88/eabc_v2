@@ -24,12 +24,10 @@ class extr_strategy:
         order = numpy.random.randint(1, upperBoundOrder)  #high value excluded for randint         
         self.sampler.number_of_nodes = order
         
-        subgraph = self.sampler.sample(data.x)                       
-
+        subgraph = self.sampler.sample(data.x)
         subgraphData = Graph_nx()
         subgraphData.x = subgraph
         subgraphData.y = data.y
-
-        return subgraphData
         
+        return subgraphData
         
