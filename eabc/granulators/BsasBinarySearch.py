@@ -50,5 +50,4 @@ class BsasBinarySearch(Granulator):
             F = super(BsasBinarySearch,self)._evaluateF(normalizeComp[i],normalizeCard[i])
             newGr = Granule(repres._representativeElem,self._distanceFunction,F,normalizeCard[i],normalizeComp[i])
             super(BsasBinarySearch,self)._addSymbol(newGr)
-        
-        return partitions 
+    
