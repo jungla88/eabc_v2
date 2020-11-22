@@ -31,13 +31,63 @@ class BMF(Dissimilarity):
     def __init__(self, nodeDiss, edgeDiss):
 
         """ User Defined Node/Edges dissimilarity """
-        self.__nodeDiss = nodeDiss
-        self.__edgeDiss = edgeDiss
+        self._nodeDiss = nodeDiss
+        self._edgeDiss = edgeDiss
 
         """Default cost Parameters """
-        self.nodesParam = {'sub': 1.0, 'del': 1.0, 'ins': 1.0}
-        self.edgesParam = {'sub': 1.0, 'del': 1.0, 'ins': 1.0}
+        self._nodesParam = {'sub': 1.0, 'del': 1.0, 'ins': 1.0}
+        self._edgesParam = {'sub': 1.0, 'del': 1.0, 'ins': 1.0}
 
+
+    @property
+    def nodeInsWeight(self):
+        return self._nodesParam['ins']
+    @nodeInsWeight.setter
+    def nodeInsWeight(self,val):
+        if 0<=val<=1:
+            self._nodesParam['ins']=val
+            
+    @property
+    def nodeSubWeight(self):
+        return self._nodesParam['sub']
+    @nodeSubWeight.setter
+    def nodeSubWeight(self,val):
+        if 0<=val<=1:
+            self._nodesParam['sub']=val
+
+    @property
+    def nodeDelWeight(self):
+        return self._nodesParam['del']
+    @nodeDelWeight.setter
+    def nodeDelWeight(self,val):
+        if 0<=val<=1:
+            self._nodesParam['del']=val            
+
+    @property
+    def edgeInsWeight(self):
+        return self._edgesParam['ins']
+    @edgeInsWeight.setter
+    def edgeInsWeight(self,val):
+        if 0<=val<=1:
+            self._edgesParam['ins']=val
+            
+    @property
+    def edgeSubWeight(self):
+        return self._edgesParam['sub']
+    @edgeSubWeight.setter
+    def edgeSubWeight(self,val):
+        if 0<=val<=1:
+            self._edgesParam['sub']=val
+
+    @property
+    def edgeDelWeight(self):
+        return self._edgesParam['del']
+    @edgeDelWeight.setter
+    def edgeDelWeight(self,val):
+        if 0<=val<=1:
+            self._edgesParam['del']=val
+    
+    
     def __call__(self, g1, g2):
 
         """ node Best Match First """
@@ -66,7 +116,7 @@ class BMF(Dissimilarity):
             for g2_n in N2:
 
                 if g2_n not in hash_table:
-                    tmpDiss = self.__nodeDiss(g1.nodes[g1_n], g2.nodes[g2_n])
+                    tmpDiss = self._nodeDiss(g1.nodes[g1_n], g2.nodes[g2_n])
                     if tmpDiss < minDiss:
                         assigned_id = deepcopy(g2_n)
                         minDiss = tmpDiss
@@ -83,7 +133,7 @@ class BMF(Dissimilarity):
         else:
             totVertex_DelCost = abs(o2 - o1)
 
-        vertexDiss = self.nodesParam['sub'] * totVertex_SubCost + self.nodesParam['ins'] * totVertex_InsCost + self.nodesParam['del'] * totVertex_DelCost
+        vertexDiss = self._nodesParam['sub'] * totVertex_SubCost + self._nodesParam['ins'] * totVertex_InsCost + self._nodesParam['del'] * totVertex_DelCost
 
         """ Edge Induced Matches """
 
@@ -114,8 +164,7 @@ class BMF(Dissimilarity):
                     edge_g2_exist = g2.has_edge(u_g2, v_g2)
 
                     if edge_g1_exist and edge_g2_exist:
-                        # totEdge_SubCost += self.__edgeDiss((u_g1, v_g1), (u_g2, v_g2))
-                        totEdge_SubCost += self.__edgeDiss(g1.edges[(u_g1, v_g1)], g2.edges[(u_g2, v_g2)])                        
+                        totEdge_SubCost += self._edgeDiss(g1.edges[(u_g1, v_g1)], g2.edges[(u_g2, v_g2)])                        
                     elif edge_g1_exist:
                         edgeInsertionCount += 1
                     elif edge_g2_exist:
@@ -125,10 +174,10 @@ class BMF(Dissimilarity):
 
             edgesIndex1 += 1
 
-        edgeDiss = self.edgesParam['sub'] * totEdge_SubCost + self.edgesParam['ins'] * edgeInsertionCount + self.edgesParam['del'] * edgeDeletionCount
+        edgeDiss = self._edgesParam['sub'] * totEdge_SubCost + self._edgesParam['ins'] * edgeInsertionCount + self._edgesParam['del'] * edgeDeletionCount
 
 
-        """ Normalise stuff """
+        #Normalization assume node/edge dissimilarities are normalised [0,1] as well
         normaliseFactor_vertex = max(o1, o2)
         normaliseFactor_edge = 0.5 * (min(o1, o2) * (min(o1, o2) - 1))
 
@@ -137,6 +186,7 @@ class BMF(Dissimilarity):
 
         return 0.5 * (vertexDiss_norm + edgeDiss_norm)
 
+    #NON-SYMMETRIC
     def pdist(self, set1):
         M = np.zeros(shape= (len(set1),len(set1)))
         for i,g1 in enumerate(set1):
