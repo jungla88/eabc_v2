@@ -8,8 +8,9 @@ class Granule:
                  Fvalue = None,
                  cardinality = None,
                  avgDispersion = None,
-                 Quality = 0):
-                 #eta = 0.5):
+                 Quality = 0,
+                 epsilon = 1.1):
+                
 
         self._DissimilarityMeasure = DissimilarityMeasure 
         self._Representative = Representative
@@ -19,7 +20,8 @@ class Granule:
         # Allow user to set an F value or internally evaluate it according to card and comp?
         self._Fvalue=Fvalue
         self._Cardinality = cardinality
-        self._AvgDispersion = avgDispersion
+        self._AvgDispersion = avgDispersion 
+        self._epsilon = epsilon
         
         #Better evaluate F externally?
 #        self._Fweight = eta
@@ -74,6 +76,11 @@ class Granule:
         #     F = float('nan')        
         # return F
 
+    @property
+    def matchThr(self):
+        t = self._epsilon*self._AvgDispersion if self._AvgDispersion else None 
+        return t
+    
     @property
     def representative(self):
         return self._Representative
