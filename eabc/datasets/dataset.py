@@ -58,6 +58,7 @@ class Dataset(object):
     #Return the keys of data object assigned when loading data
     def indices(self):
         return self._indices
+    #TODO: check if worth after fresh_dpcopy
     @indices.deleter
     def indices(self):
         self._indices.clear()            
@@ -66,8 +67,8 @@ class Dataset(object):
     #Return all the raw data in dataset. It can be specified in the derived dataset. 
     def data(self):
         return list(map(lambda x: x.x, self._data))
-    
     @data.deleter
+   #TODO: check if worth after fresh_dpcopy
     def data(self):
         self._data.clear()
 
@@ -115,6 +116,7 @@ class Dataset(object):
             indices = indices[idx]
             idx = list(range(start,stop))
 
+        #FIXME: with boolean list return element with index 0 or 1
         elif isinstance(idx, list) or isinstance(idx, tuple):
             indices = [indices[i] for i in idx]
         else:
