@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
+from eabc.data import Data
 
 class Representative:
     
@@ -16,5 +17,10 @@ class Representative:
         
     def update(self,cluster):
         raise NotImplementedError
+        
+    def __isEabcData(self,data):
+        return True if isinstance(data,Data) else False
+            
+        
         
     
