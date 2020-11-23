@@ -13,14 +13,14 @@ import matplotlib.pyplot as plt
 from sklearn.datasets import make_blobs
 
 from eabc.granulators import BsasBinarySearch
-from eabc.representatives import Medoid
+from eabc.representatives import newMedoid
 
 import matplotlib.pyplot as plt
 
 #For graphs
 from Datasets.tudataset import datasets,reader
 from eabc.datasets import graph_nxDataset
-from eabc.dissimilarities import BMF
+from eabc.dissimilarities import newBMF
 
 
 def readervector(path):

@@ -52,12 +52,12 @@ print("Granulating...")
 granulationStrategy = BsasBinarySearch(graphDist,Repr,0.1)
 granulationStrategy.granulate(subgraphs)
 
-# print("Embedding...")
-# expSet = subgraphs.fresh_dpcopy()
-# for i,x in enumerate(data1):
-#     for j in range(100):
-#         expSet.add_keyVal(data1.to_key(i),subgraph_extr.extract(x))
+print("Embedding...")
+expSet = subgraphs.fresh_dpcopy()
+for i,x in enumerate(data1):
+    for j in range(100):
+        expSet.add_keyVal(data1.to_key(i),subgraph_extr.extract(x))
 
-# embeddingStrategy = SymbolicHistogram(graphDist)
-# embeddingStrategy.getSet(expSet, granulationStrategy.symbols)
+embeddingStrategy = SymbolicHistogram(graphDist)
+embeddingStrategy.getSet(expSet, granulationStrategy.symbols)
 
