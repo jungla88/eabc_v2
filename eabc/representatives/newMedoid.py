@@ -28,40 +28,26 @@ class newMedoid(Representative):
         if self._DistanceMatrix is not None:
             M = self._DistanceMatrix
         #First time I have seen the cluster, matrix is None
-        else:
-            M = Dissimilarity.pdist(cluster)
+        # else:
+        #     M = Dissimilarity.pdist(cluster)
             
-        _ids = np.asarray(range(len(cluster)))
 
-        #check M is in a condensed form. We will use a square Matrix
-        if scpDist.is_valid_y(M):
-            M = scpDist.squareform(M)            
-        #debug
-        assert(M.shape[0] == M.shape[1])            
-
+        #
         if self._isApprox:
+ 
+            #generate updated cluster ids
+            _ids = np.asarray(range(len(cluster)))
 
             #We want to fix cluster size to pool size            
-            if len(cluster) <= self._PoolSize:
+            if len(cluster) <= self._PoolSize or self._isApprox==False:
                 # Evaluate all distances even if we have a diss matrix?
                 M = Dissimilarity.pdist(cluster)
                 if scpDist.is_valid_y(M):
                     M = scpDist.squareform(M)            
                 #debug
                 assert(M.shape[0] == M.shape[1])
-                self._cluster = cluster                              
-                #Testing - We can use cluster size differences assuming last patterns are new
-                #newP = np.setdiff1d(_ids,self._ids)
-                #TODO: Assuming non-metric
-                # v_h = [Dissimilarity(cluster[newP],self._cluster[u]) for u in self._ids]
-                # v_v = [Dissimilarity(self._cluster[u],cluster[newP]) for u in self._ids]
-                # v = 0.5*(np.asarray(v_h) + np.asarray(v_v))
-                    
-                # M = np.vstack((M,v))
-                # v.append(0)
-                # M = np.hstack((M,v))
-                 
-                #Retain all data               
+                
+                self._cluster = cluster                                      
             
             else:
                 #randomly choose two pattern from the pool
@@ -93,17 +79,15 @@ class newMedoid(Representative):
                 
                 M[id_p,:] = v
                 M[:,id_p] = v
-
                 
         SoD = np.sum(M, axis = 0)    
 
         self._minSodIdx = np.argmin(SoD)        
-        self._representativeElem = cluster[self._minSodIdx]    
+        self._representativeElem = self._cluster[self._minSodIdx]
+#        self._cluster = cluster
         self._SOD = SoD[self._minSodIdx]
         self._ids = _ids
         self._DistanceMatrix = M
-        self._cluster = cluster
-              
         
         ####    
         # pairwise_dist = Dissimilarity.pdist(cluster)
