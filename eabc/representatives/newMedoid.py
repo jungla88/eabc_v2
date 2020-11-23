@@ -28,7 +28,8 @@ class newMedoid(Representative):
         #generate updated cluster ids
         _ids = np.asarray(range(len(cluster)))
 
-        #We want to fix cluster size to pool size            
+        #If cluster size is smaller than poolSize or approximation is not required
+        #we keep evaluating all distances          
         if len(cluster) <= self._PoolSize or self._isApprox==False:
             # Evaluate all distances even if we have a diss matrix?
             M = Dissimilarity.pdist(cluster)
@@ -57,6 +58,8 @@ class newMedoid(Representative):
             #Change old pattern in the container with the newest 
             self._cluster[id_p] = cluster[newP]
             
+            #We are assuming non simmetry for distance Matrix
+            #TODO: implement for general dissimilarity matrices
             v_h = np.zeros((self._PoolSize,))
             v_v = np.zeros((self._PoolSize,))
             for u in diffIds:
@@ -66,7 +69,7 @@ class newMedoid(Representative):
             # v_h = [Dissimilarity(cluster[newP], self._cluster[u]) for u in diffIds]
             # v_v = [Dissimilarity(self._cluster[u],cluster[newP]) for u in diffIds]
             v = 0.5*(np.asarray(v_h) + np.asarray(v_v))
-            
+            ###
             M[id_p,:] = v
             M[:,id_p] = v
                 
@@ -78,18 +81,3 @@ class newMedoid(Representative):
         self._SOD = SoD[self._minSodIdx]
         self._ids = _ids
         self._DistanceMatrix = M
-        
-        ####    
-        # pairwise_dist = Dissimilarity.pdist(cluster)
-    
-        # if scpDist.is_valid_y(pairwise_dist):
-        #     pairwise_dist = scpDist.squareform(pairwise_dist)
-        
-        # self._DistanceMatrix = pairwise_dist
-        
-        # #FIXME: diss matrix for graphs is not symmetric
-        # SoD = np.sum(pairwise_dist, axis = 0)    
-        # minSoDIdx = np.argmin(SoD)
-        
-        # self._representativeElem = cluster[minSoDIdx]    
-        # self._SOD = SoD[minSoDIdx]                
