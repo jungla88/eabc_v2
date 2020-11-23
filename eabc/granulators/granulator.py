@@ -45,7 +45,7 @@ class Granulator:
           
     #        
     def _evaluateF(self, normComp, normCard):
-        if 0<normComp<1 and 0<normCard<1:
+        if 0<=normComp<=1 and 0<normCard<=1:
              F = self._Fweight*normCard + (1-self._Fweight)*normComp
         else:
              raise ValueError

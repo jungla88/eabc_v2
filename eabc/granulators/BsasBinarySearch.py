@@ -11,15 +11,29 @@ import numpy as np
 
 class BsasBinarySearch(Granulator):
     
-    def __init__(self,DistanceFunction,clusterRepresentative,tStep):
+    def __init__(self,DistanceFunction,clusterRepresentative,tStep=0.1,Qmax=100):
         
         self._distanceFunction = DistanceFunction
         self._representation = clusterRepresentative #An object for evaluate the representative
         
-        self.method=BSAS(self._representation,self._distanceFunction,)
+        self._Qmax= Qmax
+        
+        self.method=BSAS(self._representation,self._distanceFunction, Q= self._Qmax)
         self.tStep = tStep
  
         super(BsasBinarySearch,self).__init__()
+        
+    @property
+    def BsasQmax(self):
+        return self._Qmax
+    @BsasQmax.setter
+    def BsasQmax(self,val):
+        if val > 0:
+            self._Qmax = val
+            self.method.Q = self._Qmax 
+        else:
+            raise ValueError
+    
         
     def granulate(self,Dataset):
         
