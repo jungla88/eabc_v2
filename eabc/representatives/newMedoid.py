@@ -3,7 +3,7 @@
 from eabc.representatives import Representative
 import scipy.spatial.distance as scpDist
 import numpy as np
-
+import eabc.dissimilarities
 
 class newMedoid(Representative):
     
@@ -43,7 +43,6 @@ class newMedoid(Representative):
         else:
             #randomly choose two pattern from the pool
             id_p1, id_p2 = np.random.choice(self._PoolSize,2,replace=False)
-#                id_p1, id_p2 = np.random.choice(len(self._cluster),2,replace=False)
             d1 = self._DistanceMatrix[self._minSodIdx,id_p1]
             d2 = self._DistanceMatrix[self._minSodIdx,id_p2]                             
             #Farthest pattern from medoid will be changed 
@@ -53,21 +52,22 @@ class newMedoid(Representative):
             #diffIds = np.setdiff1d(self._ids,id_p)
             diffIds = np.setdiff1d(range(self._PoolSize),id_p)                
             #New Id to be introduced
+            #FIXME: we are assuming an update with a single pattern introduced
+            #newP might be unuseful since the new pattern is always the last in cluster arg
+            #What if we want update with more data?
             newP = np.setdiff1d(_ids,self._ids)[0]
             
             #Change old pattern in the container with the newest 
             self._cluster[id_p] = cluster[newP]
             
-            #We are assuming non simmetry for distance Matrix
-            #TODO: implement for general dissimilarity matrices
             v_h = np.zeros((self._PoolSize,))
             v_v = np.zeros((self._PoolSize,))
+            
+            #FIXME: not needed for dissimilarities with symmetric property
             for u in diffIds:
                 v_h[u]=Dissimilarity(cluster[newP], self._cluster[u])
                 v_v[u]=Dissimilarity(self._cluster[u],cluster[newP])
-                
-            # v_h = [Dissimilarity(cluster[newP], self._cluster[u]) for u in diffIds]
-            # v_v = [Dissimilarity(self._cluster[u],cluster[newP]) for u in diffIds]
+
             v = 0.5*(np.asarray(v_h) + np.asarray(v_v))
             ###
             M[id_p,:] = v
@@ -77,7 +77,6 @@ class newMedoid(Representative):
 
         self._minSodIdx = np.argmin(SoD)        
         self._representativeElem = self._cluster[self._minSodIdx]
-#        self._cluster = cluster
         self._SOD = SoD[self._minSodIdx]
         self._ids = _ids
         self._DistanceMatrix = M
