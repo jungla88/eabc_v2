@@ -18,8 +18,8 @@ class BsasBinarySearch(Granulator):
         
         self._Qmax= Qmax
         
-        self.method=BSAS(self._representation,self._distanceFunction, Q= self._Qmax)
-        self.tStep = tStep
+        self._method=BSAS(self._representation,self._distanceFunction, Q= self._Qmax)
+        self._tStep = tStep
  
         super(BsasBinarySearch,self).__init__()
         
@@ -30,14 +30,14 @@ class BsasBinarySearch(Granulator):
     def BsasQmax(self,val):
         if val > 0:
             self._Qmax = val
-            self.method.Q = self._Qmax 
+            self._method.Q = self._Qmax 
         else:
             raise ValueError
     
         
     def granulate(self,Dataset):
         
-        partitions = BinarySearch(Dataset.data,self.method,self.tStep)
+        partitions = BinarySearch(Dataset.data,self._method,self._tStep)
         
         #Select partition based on persistence
         gap = 0
