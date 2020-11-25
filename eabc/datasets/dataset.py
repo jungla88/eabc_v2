@@ -1,13 +1,6 @@
-import re
 import copy
 import os.path as osp
 import numpy.random
-
-# def __repr__(obj):
-#     if obj is None:
-#         return 'None'
-#     return re.sub('(<.*?)\\s.*(>)', r'\1\2', obj.__repr__())
-
 
 class Dataset(object):
     r"""Dataset base class
@@ -25,18 +18,15 @@ class Dataset(object):
         r"""The number of examples in the dataset."""
         return len(self._indices)
 
-    # def __repr__(self):
-    #     #TODO: need attention
-    #     return f'{self.__class__.__name__}({len(self)})'        
+    
         
-#    def __init__(self, path=None, transform=None, pre_transform=None, seed = None):
     def __init__(self, targetObj, transform=None, pre_transform=None, seed = None):    
 
+        #Q: are really worth mantain pre_transform or trasform?
+
         self.transform = transform
-#        self.path = path
         self.pre_transform = pre_transform
         
-        #
         self._data = []
         self._indices = []     
 
@@ -45,7 +35,6 @@ class Dataset(object):
 
         if isinstance(targetObj, str):
             self.path = targetObj
-#        if isinstance(self.path, str):
             raw_path, filename = osp.split(osp.abspath(self.path))
             if(not osp.exists(self.path)):
                 raise IOError("File not found")
@@ -112,8 +101,10 @@ class Dataset(object):
         if isinstance(idx, slice):
             start = idx.start if idx.start is not None else 0
             stop = idx.stop if idx.stop is not None else len(self._data)
-
+            
+            #Select indices in the list because self._indices might not be order (shuffled dataset)
             indices = indices[idx]
+            #Unroll the slice
             idx = list(range(start,stop))
 
         #FIXME: with boolean list return element with index 0 or 1
@@ -144,27 +135,22 @@ class Dataset(object):
         dataset = self.index_select(perm)
         return (dataset, perm) if return_perm is True else dataset
     
-    r""" Create new Dataset object with null data and indices attribute. 
-    
-    Return a Dataset with empty data. Only transform and seed is copied from the original Dataset
-    
-    """
     def fresh_dpcopy(self):
+        r""" Create new Dataset object with null data and indices attribute.
+        pre_transform() is invalidated and can not be used in the copied dataset.
+        
+        Return a Dataset with empty data. Only transform and seed is copied from the original Dataset       
+        """        
         
         dataset = self.__new__(self.__class__)
         
         dataset.transform = self.transform
-#        self.pre_transform = pre_transform
-        
+
         #
         dataset._data = []
         dataset._indices = []     
 
         dataset.seed = self.seed
-        if self.seed is not None: numpy.random.seed(self.seed) 
-                
-        # dataset = copy.deepcopy(self)
-        # del dataset.data
-        # del dataset.indices
+        if self.seed is not None: numpy.random.seed(self.seed)                 
         
         return dataset
