@@ -25,6 +25,8 @@ Baldini, Luca et al. "Stochastic information granules extraction for graph embed
 from copy import deepcopy
 from eabc.dissimilarities import Dissimilarity
 import numpy as np
+import itertools
+from scipy import special
 
 class BMF(Dissimilarity):
 
@@ -186,11 +188,26 @@ class BMF(Dissimilarity):
 
         return 0.5 * (vertexDiss_norm + edgeDiss_norm)
 
-    #NON-SYMMETRIC
-    def pdist(self, set1):
-        M = np.zeros(shape= (len(set1),len(set1)))
-        for i,g1 in enumerate(set1):
-            row = [self.__call__(g1,g2) for g2 in set1]
-            M[i]= row;
+    #NON-symmetric dissimilarity matrix or forced to be taking mean value of d_ij and d_ji
+    def pdist(self, set1, forceSym = True):
+
+        if forceSym:
+            #Return Numpy like condensed array 
+            M = np.zeros(shape= (int(special.comb(len(set1),2)),))            
+            ij = itertools.combinations(range(len(set1)),r=2)             
+  
+            for idx,(i,j) in enumerate(ij):
+                x_l = self.__call__(set1[i],set1[j])
+                x_r = self.__call__(set1[j],set1[i])    
+                M[idx] = 0.5*(x_l+x_r) 
+#                    next_idx = (j-1)*(len(set1)-1)+(i-1)
+        else:
+            #Return the dissimilarity matrix 
+            #Naive way.
+            M = np.zeros(shape= (len(set1),len(set1)))
+            for i,g1 in enumerate(set1):
+                row = [self.__call__(g1,g2) for g2 in set1]
+                M[i]= row;
+        
         return M
         

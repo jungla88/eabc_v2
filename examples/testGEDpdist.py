@@ -10,7 +10,7 @@ import numpy as np
 
 from Datasets.tudataset import datasets,reader
 from eabc.datasets import graph_nxDataset
-from eabc.dissimilarities import newBMF
+from eabc.dissimilarities import BMF
 
 def nodeDissimilarity(a, b):
         D = 0
@@ -37,5 +37,7 @@ cleanData = np.asarray(cleanData,dtype=object)
 data1 = graph_nxDataset([cleanData[:,0],cleanData[:,2]],"Mutagenicity")
 data1= data1[0:10]
 
-graphDist = newBMF(nodeDissimilarity,edgeDissimilarity)
-x = graphDist.pdist(data1.data,forceSym = True)
+graphDist = BMF(nodeDissimilarity,edgeDissimilarity)
+x1 = graphDist.pdist(data1.data,forceSym = True)
+
+x2 = graphDist.pdist(data1.data,forceSym = False) 

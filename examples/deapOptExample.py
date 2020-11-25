@@ -8,13 +8,11 @@ import math
 
 from Datasets.tudataset import datasets,reader
 from eabc.datasets import graph_nxDataset
-#from eabc.dissimilarities import BMF
-from eabc.dissimilarities import newBMF
+from eabc.dissimilarities import BMF
 from eabc.extractors import Extractor
 from eabc.extractors import randomwalk_restart
 from eabc.granulators import BsasBinarySearch
-#from eabc.representatives import Medoid
-from eabc.representatives import newMedoid
+from eabc.representatives import Medoid
 from eabc.embeddings import SymbolicHistogram 
 import networkx as nx
 import numpy as np
@@ -76,9 +74,9 @@ def fitness(args):
     wEDel= individual[6]
     tau = individual[7]
     
-    Repr=newMedoid
+    Repr=Medoid
         
-    graphDist=newBMF(nodeDissimilarity,edgeDissimilarity)
+    graphDist=BMF(nodeDissimilarity,edgeDissimilarity)
     graphDist.nodeSubWeight=wNSub
     graphDist.nodeInsWeight=wNIns
     graphDist.nodeDelWeight=wNDel

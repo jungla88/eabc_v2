@@ -2,13 +2,11 @@
 
 from Datasets.tudataset import datasets,reader
 from eabc.datasets import graph_nxDataset
-#from eabc.dissimilarities import BMF
-from eabc.dissimilarities import newBMF
+from eabc.dissimilarities import BMF
 from eabc.extractors import Extractor
 from eabc.extractors import randomwalk_restart
 from eabc.granulators import BsasBinarySearch
-#from eabc.representatives import Medoid
-from eabc.representatives import newMedoid
+from eabc.representatives import Medoid
 from eabc.embeddings import SymbolicHistogram 
 import networkx as nx
 import numpy as np
@@ -41,7 +39,7 @@ data1= data1[0:100]
 #Test extr indices
 data1 = data1.shuffle()
 
-graphDist = newBMF(nodeDissimilarity,edgeDissimilarity)
+graphDist = BMF(nodeDissimilarity,edgeDissimilarity)
 
 strat = randomwalk_restart.extr_strategy(max_order=6)
 subgraph_extr = Extractor(strat)
@@ -49,7 +47,7 @@ subgraph_extr = Extractor(strat)
 print("Extracting...")
 subgraphs = subgraph_extr.randomExtractDataset(data1, 100)
 
-Repr= newMedoid
+Repr= Medoid
 
 print("Granulating...")
 granulationStrategy = BsasBinarySearch(graphDist,Repr,0.1)

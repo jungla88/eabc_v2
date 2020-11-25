@@ -13,14 +13,14 @@ import matplotlib.pyplot as plt
 from sklearn.datasets import make_blobs
 
 from eabc.granulators import BsasBinarySearch
-from eabc.representatives import newMedoid
+from eabc.representatives import Medoid
 
 import matplotlib.pyplot as plt
 
 #For graphs
 from Datasets.tudataset import datasets,reader
 from eabc.datasets import graph_nxDataset
-from eabc.dissimilarities import newBMF
+from eabc.dissimilarities import BMF
 
 
 def readervector(path):
@@ -59,12 +59,12 @@ def readergraph(path):
     return graphs_nx, classes 
 
 
-Repr = newMedoid
+Repr = Medoid
 
 #Graph
 #datasets.get_dataset("Mutagenicity")
 # data1 = graph_nxDataset("/home/luca/Documenti/Progetti/E-ABC_v2/eabc_v2/Datasets/tudataset/Mutagenicity", "Mutagenicity", readergraph)
-# graphDist = newBMF(nodeDissimilarity,edgeDissimilarity)
+# graphDist = BMF(nodeDissimilarity,edgeDissimilarity)
 # smallData = data1[1:50]
 # granulationStrategy = BsasBinarySearch(graphDist,Repr,0.1)
 # p = granulationStrategy.granulate(smallData)

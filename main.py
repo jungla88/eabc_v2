@@ -48,10 +48,25 @@ N_GEN = 100
 CXPROB = 0.2
 MUTPROB = 0.2
 
-def fitness(individual,
-            granulationBucket
-            ):
+def customXover(ind1,ind2):
     
+    g_01,g_02 = tools.cxUniform([ind1[0]], [ind2[0]], CXPROB)
+    g1,g2 = tools.cxTwoPoint(ind1[1:], ind2[1:])
+    
+    ind1[0]=g_01[0]
+    ind2[0]=g_02[0]
+    
+    for i in range(1,len(ind1)):
+        ind1[i]=g1[i-1]
+    for i in range(1,len(ind2)):
+        ind2[i]=g2[i-1]
+    
+    return ind1,ind2
+    
+    
+def fitness(args):    
+    
+    individual,granulationBucket = args
     Q= individual[0]
     wNSub= individual[1]
     wNIns= individual[2]
@@ -128,10 +143,11 @@ toolbox.register("map", futures.map)
 toolbox.register("attr_genes", gene_bound)
 toolbox.register("individual", tools.initIterate,
                 creator.Individual, toolbox.attr_genes)
-toolbox.register("population", tools.initRepeat, list, toolbox.individual,n=1000)
+toolbox.register("population", tools.initRepeat, list, toolbox.individual,n=100)
 
-toolbox.register("evaluate", fitness, granulationBucket=None)
-toolbox.register("mate", tools.cxTwoPoint)
+toolbox.register("evaluate", fitness)
+#toolbox.register("mate", tools.cxTwoPoint)
+toolbox.register("mate", customXover)
 toolbox.register("mutate", tools.mutFlipBit, indpb=0.05)
 toolbox.register("select", tools.selTournament, tournsize=3)
 
@@ -175,13 +191,12 @@ def main():
 
 
     # Evaluate the individuals with an invalid fitness
-    subgraphs = subgraph_extr.randomExtractDataset(data1, 1000)
-    mapWithConst = partial(toolbox.evaluate,granulationBucket=subgraphs)
-
     print("Initializing population...")
+    subgraphs = [subgraph_extr.randomExtractDataset(data1, 1000) for _ in population]
+#    mapWithConst = partial(toolbox.evaluate,granulationBucket=subgraphs)
     invalid_ind = [ind for ind in population if not ind.fitness.valid]
-#    fitnesses = toolbox.map(lambda x: toolbox.evaluate(x,granulationBucket = subgraphs), invalid_ind)
-    fitnesses = toolbox.map( mapWithConst, invalid_ind)
+    
+    fitnesses = toolbox.map(toolbox.evaluate, zip(invalid_ind,subgraphs))    
 
     for ind, fit in zip(invalid_ind, fitnesses):
         ind.fitness.values = fit
@@ -204,13 +219,12 @@ def main():
         offspring = varAnd(offspring, toolbox, cxpb, mutpb)
 
         # Evaluate the individuals with an invalid fitness
-        subgraphs = subgraph_extr.randomExtractDataset(data1, 100)    
-        
-        invalid_ind = [ind for ind in offspring if not ind.fitness.valid]
-        mapWithConst = partial(toolbox.evaluate,granulationBucket=subgraphs)
 
-#        fitnesses = toolbox.map(lambda x:toolbox.evaluate(x,granulationBucket= subgraphs), invalid_ind)
-        fitnesses = toolbox.map( mapWithConst, invalid_ind)
+        subgraphs = [subgraph_extr.randomExtractDataset(data1, 1000) for _ in population]
+        invalid_ind = [ind for ind in offspring if not ind.fitness.valid]
+        #mapWithConst = partial(toolbox.evaluate,granulationBucket=subgraphs)        
+        fitnesses = toolbox.map(toolbox.evaluate, zip(invalid_ind,subgraphs))    
+
         
         for ind, fit in zip(invalid_ind, fitnesses):
             ind.fitness.values = fit

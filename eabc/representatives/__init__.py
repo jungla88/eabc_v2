@@ -3,4 +3,3 @@
 
 from .representative import Representative
 from .medoid import Medoid
-from .newMedoid import newMedoid
