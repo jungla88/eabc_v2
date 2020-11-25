@@ -22,29 +22,17 @@ class Extractor:
         substruct = self.extr_strategy(pattern)
         return substruct
         
-    #FIXME: It should not be used in embedding. 
-    #substruct ID may not be the same of the structure from which it is extracted
-    
+    #It should not be used in embedding since the returning graph set is 
+    #randomly selected from different graphs 
     def randomExtractDataset(self, dataset, W):       
-        substruct_set, idx = [None] * W , [None] * W
-        
-        #TODO: deepcopy necessary. Copy memo and avoid data and indices?
-        # substruct_Dataset = copy.deepcopy(dataset)
-        # del substruct_Dataset.data
-        # del substruct_Dataset.indices
         
         substruct_Dataset = dataset.fresh_dpcopy()
         
         for i in range(W):
             idx = numpy.random.randint(0,len(dataset))
-            #debug
             g = self.extract(dataset[idx])
-            if g:
-                substruct_Dataset.add_keyVal(idx, g)
-            #--
-            #TODO:verificare add_keyVal(dataset.tokey(idx),self.extract...)
-
-            #substruct_Dataset.add_keyVal(idx, self.extract(dataset[idx]))            
+            #Add the key of the graph related to dataset list index 
+            substruct_Dataset.add_keyVal(dataset.to_key(idx),g)
             
         return substruct_Dataset
             
