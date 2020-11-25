@@ -59,26 +59,29 @@ def readergraph(path):
     return graphs_nx, classes 
 
 
-Repr = Medoid
+Repr = newMedoid
 
-datasets.get_dataset("Mutagenicity")
-data1 = graph_nxDataset("/home/luca/Documenti/Progetti/E-ABC_v2/eabc_v2/Datasets/tudataset/Mutagenicity", "Mutagenicity", readergraph)
-graphDist = BMF(nodeDissimilarity,edgeDissimilarity)
-smallData = data1[1:50]
-granulationStrategy = BsasBinarySearch(graphDist,Repr,0.1)
-p = granulationStrategy.granulate(smallData)
+#Graph
+#datasets.get_dataset("Mutagenicity")
+# data1 = graph_nxDataset("/home/luca/Documenti/Progetti/E-ABC_v2/eabc_v2/Datasets/tudataset/Mutagenicity", "Mutagenicity", readergraph)
+# graphDist = newBMF(nodeDissimilarity,edgeDissimilarity)
+# smallData = data1[1:50]
+# granulationStrategy = BsasBinarySearch(graphDist,Repr,0.1)
+# p = granulationStrategy.granulate(smallData)
 
-
-X, y = make_blobs(n_samples=100, centers=3, n_features=2,  random_state=0, cluster_std=0.5)
+#Vect
+X, y = make_blobs(n_samples=10000, centers=3, n_features=2,  random_state=0, cluster_std=0.5)
 minmax = MinMaxScaler()
 minmax.fit(X) 
 normalizer= norm01(minmax)
 dataVect = vectorDataset([X,y], "Blob",pre_transform=normalizer)
 Eucl = scipyMetrics('euclidean')
 
+#Hierarchical only with vector
 #granulationStrategy= HierchicalAggl(Eucl,Repr)
 #granulationStrategy.granulate(dataVect)
 
+#Bsas binary search
 granulationStrategy = BsasBinarySearch(Eucl,Repr,0.1)
 granulationStrategy.granulate(dataVect)
 
