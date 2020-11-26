@@ -78,7 +78,9 @@ class Granule:
 
     @property
     def matchThr(self):
-        t = self._epsilon*self._AvgDispersion if self._AvgDispersion else None 
+        #BUG: what if avgDisp is 0?
+#        t = self._epsilon*self._AvgDispersion if self._AvgDispersion else None 
+        t = self._epsilon*self._AvgDispersion 
         return t
     
     @property
