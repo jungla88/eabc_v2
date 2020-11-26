@@ -1,6 +1,6 @@
 import copy
 import os.path as osp
-import numpy.random
+import numpy
 
 class Dataset(object):
     r"""Dataset base class
@@ -20,15 +20,17 @@ class Dataset(object):
 
     
         
-    def __init__(self, targetObj, transform=None, pre_transform=None, seed = None):    
+    def __init__(self, targetObj, idx = None, transform=None, pre_transform=None, seed = None):    
 
         #Q: are really worth mantain pre_transform or trasform?
 
         self.transform = transform
         self.pre_transform = pre_transform
+        self.idx =idx
+        
         
         self._data = []
-        self._indices = []     
+        self._indices = []
 
         self.seed = seed
         if self.seed is not None: numpy.random.seed(self.seed) 
@@ -74,13 +76,24 @@ class Dataset(object):
         return self._indices[idx]
     
     def _process(self):
-        
+                
         self.process()
         
         if self.pre_transform is not None:            
                 self._data = list(map(self.pre_transform, self._data))
-
-        self._indices= list(range(len(self._data)))
+                
+        self._indices= list(range(len(self._data))) if self.idx is None else self.idx
+        
+        if self.idx is None:
+            self._indices = list(range(len(self._data)))
+        else:
+            if isinstance(self.idx,numpy.ndarray):
+                self._indices = self.idx.tolist()
+            
+        #debug
+        assert(len(self._data)==len(self._indices))
+                
+        #self._indices= list(range(len(self._data)))
         
         
     def __getitem__(self, idx):
