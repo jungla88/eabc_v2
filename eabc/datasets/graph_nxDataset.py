@@ -5,15 +5,16 @@ from eabc.data import Graph_nx
 
 class graph_nxDataset(Dataset):
     
-    def __init__(self, targetObject, name, reader= None, transform = None, pre_transform = None):
+    def __init__(self, targetObject, name, idx=None, reader= None, transform = None, pre_transform = None):
         
         self.name = name
         self.reader = reader
         self.tObject = targetObject
         self.transform = transform;
         self.pre_transform = pre_transform
+        self.idx = idx
         
-        super(graph_nxDataset,self).__init__(self.tObject, self.transform, self.pre_transform)
+        super(graph_nxDataset,self).__init__(self.tObject, idx = self.idx, transform = self.transform, pre_transform=self.pre_transform)
         
     def process(self):
       
