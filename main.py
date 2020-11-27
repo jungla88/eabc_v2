@@ -15,7 +15,9 @@ from eabc.extractors import Extractor
 from eabc.extractors import randomwalk_restart
 from eabc.granulators import BsasBinarySearch
 from eabc.representatives import Medoid
-from eabc.embeddings import SymbolicHistogram 
+from eabc.embeddings import SymbolicHistogram
+from eabc.extras.normalizeLetter import normalize
+
 import networkx as nx
 import numpy as np
 
@@ -23,22 +25,15 @@ from scoop import futures
 
 
 def nodeDissimilarity(a, b):
-        D = 0
-        if(a['labels'] != b['labels']):
-            D = 1
-        return D
-
-def edgeDissimilarity(a, b):
-        D = 0
-        if(a['labels'] != b['labels']):
-            D = 1
-        return D
+        return np.linalg.norm(np.asarray(a['attributes']) - np.asarray(b['attributes'])) / np.sqrt(2)
     
+def edgeDissimilarity(a, b):
+        return 0.0
+
 def readergraph(path):
-    graphs_nx = reader.tud_to_networkx("Mutagenicity")
+    graphs_nx = reader.tud_to_networkx("Letter-high")
     classes = [g.graph['classes'] for g in graphs_nx]
     return graphs_nx, classes 
-
 
 
 QMAX = 100
@@ -181,13 +176,18 @@ def main():
 ###################
 
     print("Loading...")
-    data1 = graph_nxDataset("/home/luca/Documenti/Progetti/E-ABC_v2/eabc_v2/Datasets/tudataset/Mutagenicity", "Mutagenicity", reader=readergraph)
-    #not connected graph
-    data1 = data1.shuffle()
-    cleanData = [(g,idx,label) for g,idx,label in zip(data1.data,data1.indices,data1.labels) if nx.is_connected(g)]
+    data1 = graph_nxDataset("/home/luca/Documenti/Progetti/E-ABC_v2/eabc_v2/Datasets/tudataset/Letter-high", "LetterH", reader = readergraph)
+    #Removed not connected graph and null graph!
+    cleanData=[]
+    for g,idx,label in zip(data1.data,data1.indices,data1.labels):
+        if not nx.is_empty(g):
+            if nx.is_connected(g):
+                cleanData.append((g,idx,label)) 
     cleanData = np.asarray(cleanData,dtype=object)
-    dataTR = graph_nxDataset([cleanData[:100,0],cleanData[:100,2]],"Mutagenicity",idx = cleanData[:100,1])
-    dataVS = graph_nxDataset([cleanData[100:200,0],cleanData[100:200,2]],"Mutagenicity", idx = cleanData[100:200,1])
+    normalize(cleanData[:750,0],cleanData[750:1500,0])
+    
+    dataTR = graph_nxDataset([cleanData[:750,0],cleanData[:750,2]],"LetterH",idx = cleanData[:750,1])
+    dataVS = graph_nxDataset([cleanData[750:1500,0],cleanData[750:1500,2]],"LetterH", idx = cleanData[750:1500,1])
     del data1
     del cleanData
 
@@ -210,7 +210,7 @@ def main():
 
     # Evaluate the individuals with an invalid fitness
     print("Initializing population...")
-    subgraphs = [subgraph_extr.randomExtractDataset(dataTR, 100) for _ in population]
+    subgraphs = [subgraph_extr.randomExtractDataset(dataTR, 10) for _ in population]
     invalid_ind = [ind for ind in population if not ind.fitness.valid]
     
     fitnesses,symbols = zip(*toolbox.map(toolbox.evaluate, zip(invalid_ind,subgraphs)))
@@ -234,7 +234,7 @@ def main():
         # Evaluate the individuals with an invalid fitness
         invalid_ind = [ind for ind in offspring if not ind.fitness.valid]
         
-        subgraphs = [subgraph_extr.randomExtractDataset(dataTR, 100) for _ in population]
+        subgraphs = [subgraph_extr.randomExtractDataset(dataTR, 10) for _ in invalid_ind]
         fitnesses,alphabet = zip(*toolbox.map(toolbox.evaluate, zip(invalid_ind,subgraphs)))
         alphabet = sum(symbols,[])
         
