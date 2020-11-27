@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from littleballoffur import RandomWalkWithRestartSampler
+from littleballoffur import RandomWalkSampler
 from eabc.data import Graph_nx
 import numpy.random
 
@@ -8,8 +9,8 @@ import numpy.random
 #Accept a Graph_nx type and return a Graph_nx type 
 class extr_strategy:
     
-    def __init__(self, max_order = 5, seed = None):
-        self.sampler = RandomWalkWithRestartSampler()
+    def __init__(self, max_order = 5, seed = None, restart=False):
+        self.sampler = RandomWalkSampler() if restart==False else RandomWalkWithRestartSampler() 
         self.max_order = max_order
         
         if seed:
