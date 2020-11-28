@@ -21,7 +21,7 @@ class BsasBinarySearch(Granulator):
         self._method=BSAS(self._representation,self._distanceFunction, Q= self._Qmax)
         self._tStep = tStep
  
-        super(BsasBinarySearch,self).__init__()
+        super().__init__()
         
     @property
     def BsasQmax(self):
