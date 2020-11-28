@@ -15,7 +15,7 @@ class vectorDataset(Dataset):
         self.transform = transform
         self.pre_transform = pre_transform
         #TODO: add create dataset with fixed indices
-        super(vectorDataset,self).__init__(self.tObject, self.transform, self.pre_transform)
+        super(vectorDataset,self).__init__(self.tObject, transform= self.transform, pre_transform=self.pre_transform)
         
     def process(self):
 
