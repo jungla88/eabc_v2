@@ -83,6 +83,7 @@ Eucl = scipyMetrics('euclidean')
 
 #Bsas binary search
 granulationStrategy = BsasBinarySearch(Eucl,Repr,0.1)
+granulationStrategy.symbol_thr=0.5
 granulationStrategy.granulate(dataVect)
 
 medoid = granulationStrategy.symbols
