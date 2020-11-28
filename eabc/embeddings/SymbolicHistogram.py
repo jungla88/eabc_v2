@@ -11,7 +11,7 @@ def PgetVector(elemDecomposition, alphabetSet,Dissimilarity):
     histogram = numpy.zeros((len(alphabetSet,)))
     for i,sym in enumerate(alphabetSet): 
         
-        Diss = Dissimilarity if not None else sym.dissimilarity    
+        Diss = Dissimilarity if Dissimilarity else sym.dissimilarity    
         j=0
         for x in elemDecomposition:
                 if Diss(sym.representative,x)<=sym.matchThr:
