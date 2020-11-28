@@ -18,14 +18,14 @@ class Granulator:
     @symbol_thr.setter
     def symbol_thr(self,val):
         if val > 0 and val <=1:
-            self._sym_threshold = val
+            self._Fsym_threshold = val
         else:
             raise ValueError
 
     @property
     def eta(self):
         return self._Fweight
-    @symbol_thr.setter
+    @eta.setter
     def eta(self,val):
         if val > 0 and val <=1:
             self._Fweight = val
