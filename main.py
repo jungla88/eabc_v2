@@ -19,10 +19,8 @@ from eabc.embeddings import SymbolicHistogram
 from eabc.extras.normalizeLetter import normalize
 
 import networkx as nx
-import numpy as np
 
-from scoop import futures
-
+import multiprocessing
 
 def nodeDissimilarity(a, b):
         return np.linalg.norm(np.asarray(a['attributes']) - np.asarray(b['attributes'])) / np.sqrt(2)
@@ -132,7 +130,8 @@ creator.create("Individual", list, fitness=creator.FitnessMin)
 
 toolbox = base.Toolbox()
 
-toolbox.register("map", futures.map)
+pool = multiprocessing.Pool()
+toolbox.register("map", pool.map)
 
 toolbox.register("attr_genes", gene_bound)
 toolbox.register("individual", tools.initIterate,
@@ -177,6 +176,7 @@ def main():
 
     print("Loading...")
     data1 = graph_nxDataset("/home/luca/Documenti/Progetti/E-ABC_v2/eabc_v2/Datasets/tudataset/Letter-high", "LetterH", reader = readergraph)
+    data1 = data1.shuffle()
     #Removed not connected graph and null graph!
     cleanData=[]
     for g,idx,label in zip(data1.data,data1.indices,data1.labels):
@@ -197,15 +197,15 @@ def main():
     extract_func = randomwalk_restart.extr_strategy(max_order=6)
     subgraph_extr = Extractor(extract_func)
 
-    embeddingStrategy = SymbolicHistogram(isSymbolDiss=True)
+    embeddingStrategy = SymbolicHistogram(isSymbolDiss=True,isParallel=False)
     
     expTRSet = dataTR.fresh_dpcopy()
     for i,x in enumerate(dataTR):
-        for j in range(1000):
+        for j in range(10):
             expTRSet.add_keyVal(dataTR.to_key(i),subgraph_extr.extract(x))
     expVSSet = dataVS.fresh_dpcopy()
     for i,x in enumerate(dataVS):
-        for j in range(1000):
+        for j in range(10):
             expVSSet.add_keyVal(dataVS.to_key(i),subgraph_extr.extract(x))
 
     # Evaluate the individuals with an invalid fitness
@@ -231,13 +231,14 @@ def main():
         # Vary the population
         offspring = varOr(population, toolbox, lambda_, cxpb, mutpb)
 
-        # Evaluate the individuals with an invalid fitness
-        invalid_ind = [ind for ind in offspring if not ind.fitness.valid]
-        
-        subgraphs = [subgraph_extr.randomExtractDataset(dataTR, 10) for _ in invalid_ind]
-        fitnesses,alphabet = zip(*toolbox.map(toolbox.evaluate, zip(invalid_ind,subgraphs)))
-        alphabet = sum(symbols,[])
-        
+        #Let run the agents and invalidate all
+        pop = population + offspring        
+        invalid_ind = pop
+        subgraphs = [subgraph_extr.randomExtractDataset(dataTR, 10) for _ in pop]
+        fitnesses,alphabet = zip(*toolbox.map(toolbox.evaluate, zip(pop,subgraphs)))
+        alphabet = sum(alphabet,[])
+         
+        #Embedded with current symbols
         embeddingStrategy.getSet(expTRSet, alphabet)
         TRembeddingMatrix = np.asarray(embeddingStrategy._embeddedSet)
         TRpatternID = embeddingStrategy._embeddedIDs
@@ -246,12 +247,19 @@ def main():
         VSembeddingMatrix = np.asarray(embeddingStrategy._embeddedSet)
         VSpatternID = embeddingStrategy._embeddedIDs        
 
+        #Resorting matrix for consistency with dataset        
+        TRorderID = np.asarray([TRpatternID.index(x) for x in dataTR.indices])
+        VSorderID = np.asarray([VSpatternID.index(x) for x in dataVS.indices])        
+        TRMat = TRembeddingMatrix[TRorderID,:]
+        VSMat = VSembeddingMatrix[VSorderID,:]        
+        
+        #Getting labels
         TRlabels = dataTR.labels
         VSlabels = dataVS.labels
-        
+                
         classifier = KNN()
-        classifier.fit(TRembeddingMatrix,TRlabels)
-        predictedVSLabels = classifier.predict(VSembeddingMatrix)
+        classifier.fit(TRMat,TRlabels)
+        predictedVSLabels = classifier.predict(VSMat)
         accuracyVS = sum(predictedVSLabels==VSlabels)/len(VSlabels)
 
         print("Accuracy classification with agent symbols = {}".format(accuracyVS))        
