@@ -63,20 +63,22 @@ class SymbolicHistogram(Embedder):
         
         return histogram
             
-        
     def getSet(self,datasetDecomposed,alphabetSet):
         
         self.__sanityCheck()
         
         IDs= numpy.array(datasetDecomposed.indices)
+        #IDs are sorted in ascending order 
         uniqueIDs = numpy.unique(IDs)
-        
-        embeddedSet, embeddedIDs =[],[]# []*len(uniqueIDs),[]*len(uniqueIDs)
-        
+
+        embeddedSet, embeddedIDs =[],[]        
         if self._isParallel:
             Dissimilarity = self._Dissimilarity if self._isSymbolDiss==False else None
+            #Might be not necessary return the ids
             output=Parallel(n_jobs=-1)(delayed(JobLibHelper)(x,IDs,datasetDecomposed,alphabetSet,Dissimilarity) for x in uniqueIDs)
             for i in range(len(output)):
+                # embeddedSet[i]=output[i][0]
+                # embeddedIDs[i]=output[i][1]         
                 embeddedSet.append(output[i][0])
                 embeddedIDs.append(output[i][1])
             #For debug    
@@ -90,7 +92,6 @@ class SymbolicHistogram(Embedder):
                 substructIndices = [idx for idx,ids in enumerate(boolIDs) if ids==True]
                 
                 substrDecomposition = datasetDecomposed[substructIndices]
-                self.getVector(substrDecomposition.data,alphabetSet)            
                 embeddedSet.append(self.getVector(substrDecomposition.data,alphabetSet))
                 embeddedIDs.append(x)
                 
