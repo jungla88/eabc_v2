@@ -3,7 +3,7 @@
 import numpy
 import copy
 
-def normalize(*argv):
+def normalize(strAttribute,*argv):
     """ Normalization routine for Letter 1, 2 and 3.
     Normalization includes scaling [x, y] coordinates according to the maximum value found in the overall dataset.
     The input sets will be modified in-place.
@@ -25,7 +25,7 @@ def normalize(*argv):
 #            thisGraph = targetSet[k]
             # append node labels
             for n in g.nodes():
-                MAX_Set = numpy.vstack((MAX_Set, g.nodes[n]['attributes']))
+                MAX_Set = numpy.vstack((MAX_Set, g.nodes[n][strAttribute]))
         MAX_Set = copy.deepcopy(MAX_Set.ravel().max())
         MAXval.append(MAX_Set)
 
@@ -36,4 +36,4 @@ def normalize(*argv):
     for targetSet in argv:
         for g in targetSet:
             for n in g.nodes():
-                g.nodes[n]['attributes'] = g.nodes[n]['attributes']/MAX
+                g.nodes[n][strAttribute] = g.nodes[n][strAttribute]/MAX
