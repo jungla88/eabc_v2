@@ -3,8 +3,13 @@ Datasets/tudataset/COIL*
 Datasets/tudataset/Mutag*
 Datasets/tudataset/Letter*
 Datasets/tudataset/SYN*
+Datasets/tudataset/AIDS*
 Datasets/iris
-Datasets/IAM/*
+Datasets/IAM/COIL*
+Datasets/IAM/AIDS
+Datasets/IAM/GREC*
+Datasets/IAM/Mut*
+Datasets/IAM/Prot*
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
