@@ -4,7 +4,7 @@ Datasets/tudataset/Mutag*
 Datasets/tudataset/Letter*
 Datasets/tudataset/SYN*
 Datasets/iris
-
+Datasets/IAM/*
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
