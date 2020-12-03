@@ -27,7 +27,7 @@ class Granulator:
         return self._Fweight
     @eta.setter
     def eta(self,val):
-        if val > 0 and val <=1:
+        if val >= 0 and val <=1:
             self._Fweight = val
         else:
             raise ValueError            
@@ -45,8 +45,9 @@ class Granulator:
           
     #        
     def _evaluateF(self, normComp, normCard):
+        #*0.1 normCard
         if 0<=normComp<=1 and 0<normCard<=1:
-             F = self._Fweight*normCard + (1-self._Fweight)*normComp
+             F = self._Fweight*normCard*0.1 + (1-self._Fweight)*normComp
         else:
              raise ValueError
         return F
