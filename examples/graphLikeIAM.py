@@ -214,8 +214,8 @@ creator.create("Individual", list, fitness=creator.FitnessMin)
 
 toolbox = base.Toolbox()
 
-pool = multiprocessing.Pool()
-toolbox.register("map", pool.map)
+# pool = multiprocessing.Pool()
+# toolbox.register("map", pool.map)
 
 toolbox.register("attr_genes", gene_bound)
 toolbox.register("individual", tools.initIterate,

@@ -20,6 +20,7 @@ from Datasets.tudataset import reader
 from eabc.datasets import graph_nxDataset
 from eabc.dissimilarities import BMF
 from eabc.extractors import Extractor
+from eabc.extractors import breadthFirstSearch
 from eabc.extractors import randomwalk_restart
 from eabc.granulators import BsasBinarySearch
 from eabc.representatives import Medoid
@@ -75,6 +76,7 @@ def fitness(individual,granulationBucket,trEmbeddBucket, vsEmbeddBucket,TRindice
     wEIns= individual[5]
     wEDel= individual[6]
     tau = individual[7]
+    eta = individual[8]
     
     Repr=Medoid
     
@@ -89,7 +91,8 @@ def fitness(individual,granulationBucket,trEmbeddBucket, vsEmbeddBucket,TRindice
     
     #Setting granulation strategy
     granulationStrategy = BsasBinarySearch(graphDist,Repr,0.1)
-    granulationStrategy.BsasQmax = Q  
+    granulationStrategy.BsasQmax = Q
+    granulationStrategy.eta=eta
     granulationStrategy.symbol_thr = tau
     #Setup embedder
     embeddingStrategy = SymbolicHistogram(Dissimilarity=graphDist,isSymbolDiss=False,isParallel=False)
@@ -102,23 +105,43 @@ def fitness(individual,granulationBucket,trEmbeddBucket, vsEmbeddBucket,TRindice
     if alphabet:
         
         #Embedded with current symbols
-        embeddingStrategy.getSet(trEmbeddBucket, alphabet)
+        # embeddingStrategy.getSet(trEmbeddBucket, alphabet)
+        # TRembeddingMatrix = np.asarray(embeddingStrategy._embeddedSet)
+        # TRpatternID = embeddingStrategy._embeddedIDs
+
+        ##Debug
+        embeddingStrategy.getSetDebug(trEmbeddBucket, alphabet,TRindices)
         TRembeddingMatrix = np.asarray(embeddingStrategy._embeddedSet)
         TRpatternID = embeddingStrategy._embeddedIDs
+        print(np.all(np.asarray(TRlabels) == np.asarray(embeddingStrategy._embeddedClass)))
+        ##
         
-        embeddingStrategy.getSet(vsEmbeddBucket, alphabet)
+        # embeddingStrategy.getSet(vsEmbeddBucket, alphabet)
+        # VSembeddingMatrix = np.asarray(embeddingStrategy._embeddedSet)
+        # VSpatternID = embeddingStrategy._embeddedIDs        
+        embeddingStrategy.getSetDebug(vsEmbeddBucket, alphabet,VSindices)
         VSembeddingMatrix = np.asarray(embeddingStrategy._embeddedSet)
         VSpatternID = embeddingStrategy._embeddedIDs        
-        
+        print(np.all(np.asarray(VSlabels) == np.asarray(embeddingStrategy._embeddedClass)))
+              
         #Resorting matrix for consistency with dataset        
-        TRorderID = np.asarray([TRpatternID.index(x) for x in TRindices])
+        TRorderID = np.asarray([TRpatternID.index(x) for x in TRindices])        
         VSorderID = np.asarray([VSpatternID.index(x) for x in VSindices])        
         TRMat = TRembeddingMatrix[TRorderID,:]
         VSMat = VSembeddingMatrix[VSorderID,:]        
-                
+        
+        #DEBUG
+        # x = np.all(TRMat==TRembeddingMatrix2)
+        # y = np.all(VSMat==VSembeddingMatrix2)
+        # print(x,y)               
+        ##                
+        
         classifier = KNN()
         classifier.fit(TRMat,TRlabels)
         predictedVSLabels = classifier.predict(VSMat)
+        
+        # classifier.fit(TRembeddingMatrix,TRlabels)
+        # predictedVSLabels = classifier.predict(VSembeddingMatrix)        
         accuracyVS = sum(predictedVSLabels==VSlabels)/len(VSlabels)
     
         print("Accuracy VS = {}".format(accuracyVS))
@@ -143,12 +166,12 @@ def checkBounds():
             for child in offspring:
                 if child[0] < 1:
                    child[0] = 1
-                elif child[0]>QMAX:
+                if child[0]>QMAX:
                     child[0] = QMAX
                 for i in range(1,len(child)):
                     if child[i] > 1:
                         child[i] = 1
-                    elif child[i] <= 0:
+                    if child[i] <= 0:
                         child[i] = np.finfo(float).eps
             return offspring
         return wrapper
@@ -162,7 +185,8 @@ def gene_bound():
             np.random.uniform(0, 1), #GED edge wcosts
             np.random.uniform(0, 1),
             np.random.uniform(0, 1),
-            np.random.uniform(np.finfo(float).eps, 1)] #Symbol Threshold
+            np.random.uniform(np.finfo(float).eps, 1), #Symbol Threshold
+            np.random.uniform(0, 1)] #eta
 
     return ranges
 
@@ -173,8 +197,8 @@ creator.create("Individual", list, fitness=creator.FitnessMin)
 
 toolbox = base.Toolbox()
 
-pool = multiprocessing.Pool()
-toolbox.register("map", pool.map)
+# pool = multiprocessing.Pool()
+# toolbox.register("map", pool.map)
 
 toolbox.register("attr_genes", gene_bound)
 toolbox.register("individual", tools.initIterate,
@@ -246,21 +270,31 @@ def main():
 
     print("Setup...")
     
-    extract_func = randomwalk_restart.extr_strategy(max_order=6)
+#    extract_func = randomwalk_restart.extr_strategy(max_order=6)
+    extract_func = breadthFirstSearch.extr_strategy(max_order=6)
+#    subgraph_extr = Extractor(extract_func)
     subgraph_extr = Extractor(extract_func)
 
     expTRSet = dataTR.fresh_dpcopy()
     for i,x in enumerate(dataTR):
-        for j in range(50):
-            expTRSet.add_keyVal(dataTR.to_key(i),subgraph_extr.extract(x))
+        k=0
+        while(k<50):
+            for j in range(1,6):
+                subgraph_extr.max_order=j
+                expTRSet.add_keyVal(dataTR.to_key(i),subgraph_extr.extract(x))
+            k+=6
     expVSSet = dataVS.fresh_dpcopy()
     for i,x in enumerate(dataVS):
-        for j in range(50):
-            expVSSet.add_keyVal(dataVS.to_key(i),subgraph_extr.extract(x))
-
+        k=0
+        while(k<50):
+            for j in range(1,6):
+                subgraph_extr.max_order=j
+                expVSSet.add_keyVal(dataVS.to_key(i),subgraph_extr.extract(x))
+            k+=6
     # Evaluate the individuals with an invalid fitness
     print("Initializing population...")
-    subgraphs = subgraph_extr.randomExtractDataset(dataTR, 1260)
+#    subgraphs = subgraph_extr.randomExtractDataset(dataTR, 120)
+    subgraphs= subgraph_extr.randomExtractDataset(dataTR, 500)
     invalid_ind = [ind for ind in population if not ind.fitness.valid]
     
     fitnesses = toolbox.map(

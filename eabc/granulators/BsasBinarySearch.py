@@ -40,43 +40,44 @@ class BsasBinarySearch(Granulator):
         partitions = BinarySearch(Dataset.data,self._method,self._tStep)
         
         #Select partition based on persistence
-        # gap = 0
-        # bestP = None
-        # for i in range(len(partitions)-1):                        
-        #     theta = sorted(list(partitions.keys()))[i]
-        #     thetaNext = sorted(list(partitions.keys()))[i+1]            
-        #     gapTemp = thetaNext - theta            
-        #     if gapTemp > gap:
-        #         bestP = i
+        gap = 0
+        bestP = None
+        for i in range(len(partitions)-1):                        
+            theta = sorted(list(partitions.keys()))[i]
+            thetaNext = sorted(list(partitions.keys()))[i+1]            
+            gapTemp = thetaNext - theta            
+            if gapTemp > gap:
+                bestP = i
         
-        # theta = sorted(list(partitions.keys()))[bestP]
+        theta = sorted(list(partitions.keys()))[bestP]
         
-        # clustersLabels, reprElems = partitions[theta][0],partitions[theta][1]
+        clustersLabels, reprElems = partitions[theta][0],partitions[theta][1]
 
+        #TODO: interface for switching to this method
         #All symbols
-        for key in partitions.keys():
-            clustersLabels, reprElems = partitions[key][0],partitions[key][1]
-            nClust = len(reprElems)
-            #Evaluation - Lower is better
-            normalizeCard = [1-(len(clustersLabels[l])/len(Dataset.data)) 
-                              if len(clustersLabels)>1 else 1 for l in range(nClust)]
-            normalizeComp = [reprElems[l]._SOD/(len(clustersLabels[l])-1) 
-                              if len(clustersLabels[l])>1 else 1 for l in range(nClust)]
+        # for key in partitions.keys():
+        #     clustersLabels, reprElems = partitions[key][0],partitions[key][1]
+        #     nClust = len(reprElems)
+        #     #Evaluation - Lower is better
+        #     normalizeCard = [1-(len(clustersLabels[l])/len(Dataset.data)) 
+        #                       if len(clustersLabels)>1 else 1 for l in range(nClust)]
+        #     normalizeComp = [reprElems[l]._SOD/(len(clustersLabels[l])-1) 
+        #                       if len(clustersLabels[l])>1 else 1 for l in range(nClust)]
             
-            for i,repres in enumerate(reprElems):
-                F = super(BsasBinarySearch,self)._evaluateF(normalizeComp[i],normalizeCard[i])
-                newGr = Granule(repres._representativeElem,self._distanceFunction,F,normalizeCard[i],normalizeComp[i])
-                super(BsasBinarySearch,self)._addSymbol(newGr)
+        #     for i,repres in enumerate(reprElems):
+        #         F = super(BsasBinarySearch,self)._evaluateF(normalizeComp[i],normalizeCard[i])
+        #         newGr = Granule(repres._representativeElem,self._distanceFunction,F,normalizeCard[i],normalizeComp[i])
+        #         super(BsasBinarySearch,self)._addSymbol(newGr)
         
-        # nClust = len(reprElems)
-        # #Evaluation - Lower is better
-        # normalizeCard = [1-(len(clustersLabels[l])/len(Dataset.data)) 
-        #                   if len(clustersLabels)>1 else 1 for l in range(nClust)]
-        # normalizeComp = [reprElems[l]._SOD/(len(clustersLabels[l])-1) 
-        #                   if len(clustersLabels[l])>1 else 1 for l in range(nClust)]
+        nClust = len(reprElems)
+        #Evaluation - Lower is better
+        normalizeCard = [1-(len(clustersLabels[l])/len(Dataset.data)) 
+                          if len(clustersLabels)>1 else 1 for l in range(nClust)]
+        normalizeComp = [reprElems[l]._SOD/(len(clustersLabels[l])-1) 
+                          if len(clustersLabels[l])>1 else 1 for l in range(nClust)]
         
-        # for i,repres in enumerate(reprElems):
-        #     F = super(BsasBinarySearch,self)._evaluateF(normalizeComp[i],normalizeCard[i])
-        #     newGr = Granule(repres._representativeElem,self._distanceFunction,F,normalizeCard[i],normalizeComp[i])
-        #     super(BsasBinarySearch,self)._addSymbol(newGr)
+        for i,repres in enumerate(reprElems):
+            F = super(BsasBinarySearch,self)._evaluateF(normalizeComp[i],normalizeCard[i])
+            newGr = Granule(repres._representativeElem,self._distanceFunction,F,normalizeCard[i],normalizeComp[i])
+            super(BsasBinarySearch,self)._addSymbol(newGr)
     

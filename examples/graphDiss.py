@@ -13,8 +13,6 @@ from eabc.dissimilarities import GED
 
 # datasets.get_dataset("Mutagenicity")
 
-
-
 def nodeDissimilarity(a, b):
         D = 0
         if(a['labels'] != b['labels']):
@@ -38,7 +36,6 @@ data1 = graph_nxDataset("/home/luca/Documenti/Progetti/E-ABC_v2/eabc_v2/Datasets
 strat = randomwalk_restart.extr_strategy(max_order=5)
 subgraph_extr = Extractor(strat)
 
-smallD = data1[1:10]
 
 subgraphs = subgraph_extr.randomExtractDataset(smallD, 50 )
 distance_function = GED.BMF(nodeDissimilarity, edgeDissimilarity)

@@ -12,7 +12,7 @@ from ast import literal_eval as lit_ev
 
 class LETTERdiss:
     
-    def __init__(self,vertexWeight = 2):
+    def __init__(self,vertexWeight = sqrt(2)):
 
         self._VertexDissWeights=vertexWeight
         
