@@ -24,10 +24,10 @@ from eabc.extras.normalizeLetter import normalize
 from eabc.extras.featureSelDE import FSsetup_DE,FSfitness_DE 
 
 
-QMAX = 100
+QMAX = 500
 N_GEN = 100
-CXPROB = 0.2
-MUTPROB = 0.2
+CXPROB = 0.33
+MUTPROB = 0.33
 MU= 20
 LAMBDA=20
 
@@ -108,8 +108,8 @@ def checkBounds():
             for child in offspring:
                 if child[0] < 1:
                    child[0] = 1
-                elif child[0]>QMAX:
-                    child[0] = QMAX
+                elif child[0]>QMAX/15: # number of letter classes
+                    child[0] = QMAX/15 
                 for i in range(1,len(child)):
                     if child[i] > 1:
                         child[i] = 1
@@ -185,8 +185,8 @@ def main():
 ###################
 
     print("Loading...")
-    data1 = graph_nxDataset("/home/luca/Documenti/Progetti/E-ABC_v2/eabc_v2/Datasets/IAM/Letter3/Training/", "LetterH", reader = IAMreadergraph)
-    data2 = graph_nxDataset("/home/luca/Documenti/Progetti/E-ABC_v2/eabc_v2/Datasets/IAM/Letter3/Validation/", "LetterH", reader = IAMreadergraph)    
+    data1 = graph_nxDataset("/home/LabRizzi/Documents/Alessio_Martino/eabc_v2/Datasets/IAM/Letter3/Training/", "LetterH", reader = IAMreadergraph)
+    data2 = graph_nxDataset("/home/LabRizzi/Documents/Alessio_Martino/eabc_v2/Datasets/IAM/Letter3/Validation/", "LetterH", reader = IAMreadergraph)    
     data1 = data1.shuffle()
     data2 = data2.shuffle()
     #Removed not connected graph and null graph!
@@ -201,8 +201,8 @@ def main():
     normalize('coords',cleanData[:750,0],cleanData[750:,0])
     
     #Slightly different from dataset used in pygralg
-    dataTR = graph_nxDataset([cleanData[:100,0],cleanData[:100,2]],"LetterH",idx = cleanData[:100,1])
-    dataVS = graph_nxDataset([cleanData[750:850,0],cleanData[750:850,2]],"LetterH", idx = cleanData[750:850,1])    
+    dataTR = graph_nxDataset([cleanData[:750,0],cleanData[:750,2]],"LetterH",idx = cleanData[:750,1])
+    dataVS = graph_nxDataset([cleanData[750:1500,0],cleanData[750:1500,2]],"LetterH", idx = cleanData[750:1500,1])    
     del data1
     del data2
     del cleanData
@@ -232,16 +232,30 @@ def main():
             expVSSet.add_keyVal(dataVS.to_key(i),subgraph_extr.extract(x))
 
     # Evaluate the individuals with an invalid fitness
+
+    DEBUG_FIXSUBGRAPH = True
     print("Initializing populations...")
-    
+    if DEBUG_FIXSUBGRAPH:
+        print("DEBUG SUBGRAPH STOCHASTIC TRUE")
     classes= dataTR.unique_labels()
     #Initialize a dict of swarms - {key:label - value:deap popolution}
     population = {thisClass:toolbox.population(n=MU) for thisClass in classes}
+
+    if DEBUG_FIXSUBGRAPH:
+        subgraphsByclass = {thisClass:[] for thisClass in classes}
+        
     for swarmClass in classes:
 
         thisClassPatternIDs = np.where(np.asarray(dataTR.labels)==swarmClass)[0]
         classAwareTR = dataTR[thisClassPatternIDs.tolist()]
-        subgraphs = [subgraph_extr.randomExtractDataset(classAwareTR, 20) for _ in population]
+        ##
+        if DEBUG_FIXSUBGRAPH:
+            subgraphsByclass[swarmClass] = subgraph_extr.randomExtractDataset(classAwareTR, 200)
+            subgraphs = [subgraphsByclass[swarmClass] for _ in population[swarmClass]]
+        else:
+            subgraphs = [subgraph_extr.randomExtractDataset(classAwareTR, 20) for _ in population[swarmClass]]
+        ##
+
         invalid_ind = [ind for ind in population[swarmClass] if not ind.fitness.valid]
         fitnesses,symbols = zip(*toolbox.map(toolbox.evaluate, zip(invalid_ind,subgraphs)))
 
@@ -275,12 +289,15 @@ def main():
                 #Select both old and offspring for evaluation
                 pop = population[swarmClass] + offspring
                 invalid_ind = pop
-                #Select pop number of buckets to be assigned to agents 
-                subgraphs = [subgraph_extr.randomExtractDataset(classAwareTR, 20) for _ in pop]
+                #Select pop number of buckets to be assigned to agents
+                if DEBUG_FIXSUBGRAPH:
+                    subgraphs = [subgraphsByclass[swarmClass] for _ in pop]
+                else:
+                    subgraphs = [subgraph_extr.randomExtractDataset(classAwareTR, 20) for _ in pop]
 
                 #Run individual and return the partial fitness comp+card
                 fitnesses,alphabets = zip(*toolbox.map(toolbox.evaluate, zip(pop,subgraphs)))
-                
+
                 #Generate IDs for agents that pushed symbols in class bucket
                 #E.g. idAgents       [ 0   0    1   1  1     2    -  3    .... ]
                 #     alphabets      [[s1 s2] [ s3  s4 s5]  [s6] []  [s7] .... ]
@@ -327,7 +344,7 @@ def main():
                 specificity = tn / (tn + fp)
                 J = sensitivity + specificity - 1
                 J = (J + 1) / 2
-                error_rate = 1 - J          
+                #error_rate = 1 - J          
                 print("Informedness {} - class {} - alphabet = {}".format(J, swarmClass,len(thisGenClassAlphabet)))
                 
                 #Feature Selection                  
@@ -375,7 +392,7 @@ def main():
                 
                 ClassAlphabets[swarmClass]= np.asarray(thisGenClassAlphabet,dtype = object)[mask].tolist()
 
-                
+                #invalid ind is a reference to pop
                 for ind, fit in zip(invalid_ind, tuple(fitnessesRewarded)):
                     ind.fitness.values = fit
             
@@ -384,7 +401,7 @@ def main():
                 #     halloffame.update(offspring)
             
                     # Select the next generation population for the current swarm
-                population[swarmClass][:] = toolbox.select(population[swarmClass] + offspring, mu)
+                population[swarmClass][:] = toolbox.select(pop, mu)
                 
                 print("#########")
                 
