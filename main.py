@@ -3,9 +3,10 @@ from deap import base, creator,tools
 from deap.algorithms import varOr
 import numpy as np
 import random
-import math
+import pickle
 import networkx as nx
 import multiprocessing
+from functools import partial
 
 
 from sklearn.neighbors import KNeighborsClassifier as KNN
@@ -24,19 +25,14 @@ from eabc.extras.normalizeLetter import normalize
 from eabc.extras.featureSelDE import FSsetup_DE,FSfitness_DE 
 
 
-QMAX = 500
-N_GEN = 100
-CXPROB = 0.33
-MUTPROB = 0.33
-MU= 20
-LAMBDA=20
 
-
-def IAMreadergraph(path):
+def IAMreader(path,name):
     
     delimiters = "_", "."      
     
-    Loader = IamDotLoader.DotLoader(Letter.parser,delimiters=delimiters)
+    if name == 'LetterH' or 'LetterM' or 'LetterL' :
+        Loader = IamDotLoader.DotLoader(Letter.parser,delimiters=delimiters)
+    
     graphDict = Loader.load(path)
     
     graphs,classes=[],[]
@@ -48,17 +44,25 @@ def IAMreadergraph(path):
 
 def customXover(ind1,ind2):
     
+    #Q
     g_01,g_02 = tools.cxUniform([ind1[0]], [ind2[0]], CXPROB)
-    g1,g2 = tools.cxTwoPoint(ind1[1:], ind2[1:])
-    
+    #GED
+    g1,g2 = tools.cxTwoPoint(ind1[1:7], ind2[1:7])
+    #Tau
+    g_71,g_72 = tools.cxUniform([ind1[7]], [ind2[7]], CXPROB)
+
+    #
     ind1[0]=g_01[0]
     ind2[0]=g_02[0]
-    
-    for i in range(1,len(ind1)):
+    #
+    for i in range(1,7):
         ind1[i]=g1[i-1]
-    for i in range(1,len(ind2)):
+    for i in range(1,7):
         ind2[i]=g2[i-1]
-    
+    #
+    ind1[7]=g_71[0]
+    ind2[7]=g_72[0]
+
     return ind1,ind2
 
     
@@ -75,7 +79,8 @@ def fitness(args):
     tau = individual[7]
     
     Repr=Medoid
-        
+    
+    #TODO:edit for change dataset
     diss = Letter.LETTERdiss()
 
     graphDist=BMF(diss.nodeDissimilarity,diss.edgeDissimilarity)
@@ -133,9 +138,6 @@ def gene_bound():
 
 
 
-# creator.create("FitnessMin", base.Fitness, weights=(-1.0,))
-# creator.create("Individual", list, fitness=creator.FitnessMin)
-
 creator.create("FitnessMax", base.Fitness, weights=(1.0,))
 creator.create("Individual", list, fitness=creator.FitnessMax)
 
@@ -158,66 +160,67 @@ toolbox.register("select", tools.selTournament, tournsize=5)
 toolbox.decorate("mate", checkBounds())
 toolbox.decorate("mutate", checkBounds())
 
-def main():
+QMAX = 500
+CXPROB = 0.33
+MUTPROB = 0.33
+
+def main(N_subgraphs,path,name,mu,lambda_,ngen,maxorder):
     
-# def eaSimple(population, toolbox, cxpb, mutpb, ngen, stats=None,
-#              halloffame=None, verbose=__debug__):
-####################
     random.seed(64)
-    verbose = True
    
     cxpb=CXPROB
     mutpb=MUTPROB
-    ngen=N_GEN 
-    mu = MU
-    lambda_ = LAMBDA
 
-    halloffame = tools.HallOfFame(1)
-    stats = tools.Statistics(lambda ind: ind.fitness.values)
-    stats.register("avg", np.mean)
-    stats.register("std", np.std)
-    stats.register("min", np.min)
-    stats.register("max", np.max)
-    
-
-    logbook = tools.Logbook()
-    logbook.header = ['gen', 'nevals'] + (stats.fields if stats else [])
-###################
-
+    ###################
     print("Loading...")
-    data1 = graph_nxDataset("/home/LabRizzi/Documents/Alessio_Martino/eabc_v2/Datasets/IAM/Letter3/Training/", "LetterH", reader = IAMreadergraph)
-    data2 = graph_nxDataset("/home/LabRizzi/Documents/Alessio_Martino/eabc_v2/Datasets/IAM/Letter3/Validation/", "LetterH", reader = IAMreadergraph)    
-    data1 = data1.shuffle()
-    data2 = data2.shuffle()
+    
+    
+    IAMreadergraph = partial(IAMreader,name=name)
+    rawtr = graph_nxDataset(path+"Training/", "LetterH", reader = IAMreadergraph)
+    rawvs = graph_nxDataset(path+"Validation/", "LetterH", reader = IAMreadergraph)    
+    rawts = graph_nxDataset(path+"Test/", "LetterH", reader = IAMreadergraph)
+
+    #DEBUG
+    rawtr = rawtr.shuffle()
+    rawvs = rawvs.shuffle()
     #Removed not connected graph and null graph!
-    cleanData=[]
-    for dataset in [data1,data2]:
+    cleanDataTr,cleanDataVs,cleanDataTs=[],[],[]
+    for dataset,cleanData in zip([rawtr,rawvs,rawts],[cleanDataTr,cleanDataVs,cleanDataTs]):
         for g,idx,label in zip(dataset.data,dataset.indices,dataset.labels):
             if not nx.is_empty(g):
                 if nx.is_connected(g):
                     cleanData.append((g,idx,label)) 
 
-    cleanData = np.asarray(cleanData,dtype=object)
-    normalize('coords',cleanData[:750,0],cleanData[750:,0])
+    cleanDataTr = np.asarray(cleanDataTr,dtype=object)
+    cleanDataVs = np.asarray(cleanDataVs,dtype=object)
+    cleanDataTs = np.asarray(cleanDataTs,dtype=object)    
+    
+    normalize('coords',cleanDataTr[:,0],cleanDataVs[:,0],cleanDataTs[:,0])
     
     #Slightly different from dataset used in pygralg
-    dataTR = graph_nxDataset([cleanData[:750,0],cleanData[:750,2]],"LetterH",idx = cleanData[:750,1])
-    dataVS = graph_nxDataset([cleanData[750:1500,0],cleanData[750:1500,2]],"LetterH", idx = cleanData[750:1500,1])    
-    del data1
-    del data2
-    del cleanData
+    dataTR = graph_nxDataset([cleanDataTr[:100,0],cleanDataTr[:100,2]],"LetterH", idx = cleanDataTr[:100,1])
+    dataVS = graph_nxDataset([cleanDataVs[:100,0],cleanDataVs[:100,2]],"LetterH", idx = cleanDataVs[:100,1])    
+    dataTS = graph_nxDataset([cleanDataTs[:100,0],cleanDataTs[:100,2]],"LetterH", idx = cleanDataTs[:100,1])    
+
+    del rawtr
+    del rawvs
+    del rawts
+    ##################
 
 
     print("Setup...")
     
-    extract_func = randomwalk_restart.extr_strategy(max_order=6)
+    
+    #Graph decomposition
+    extract_func = randomwalk_restart.extr_strategy(max_order=maxorder)
     subgraph_extr = Extractor(extract_func)
+
 
     expTRSet = dataTR.fresh_dpcopy()
     for i,x in enumerate(dataTR):
         k=0
         while(k<50):
-            for j in range(1,6):
+            for j in range(1,maxorder):
                 subgraph_extr.max_order=j
                 expTRSet.add_keyVal(dataTR.to_key(i),subgraph_extr.extract(x))
             k+=6
@@ -225,21 +228,33 @@ def main():
     for i,x in enumerate(dataVS):
         k=0
         while(k<50):
-            for j in range(1,6):
+            for j in range(1,maxorder):
                 subgraph_extr.max_order=j
                 expVSSet.add_keyVal(dataVS.to_key(i),subgraph_extr.extract(x))
             k+=6
             expVSSet.add_keyVal(dataVS.to_key(i),subgraph_extr.extract(x))
+    expTSSet = dataTS.fresh_dpcopy()
+    for i,x in enumerate(dataTS):
+        k=0
+        while(k<50):
+            for j in range(1,maxorder):
+                subgraph_extr.max_order=j
+                expTSSet.add_keyVal(dataTS.to_key(i),subgraph_extr.extract(x))
+            k+=6
+            expTSSet.add_keyVal(dataTS.to_key(i),subgraph_extr.extract(x))            
 
+    
+
+
+    ##################
     # Evaluate the individuals with an invalid fitness
-
-    DEBUG_FIXSUBGRAPH = True
+    DEBUG_FIXSUBGRAPH = False
     print("Initializing populations...")
     if DEBUG_FIXSUBGRAPH:
         print("DEBUG SUBGRAPH STOCHASTIC TRUE")
     classes= dataTR.unique_labels()
     #Initialize a dict of swarms - {key:label - value:deap popolution}
-    population = {thisClass:toolbox.population(n=MU) for thisClass in classes}
+    population = {thisClass:toolbox.population(n=mu) for thisClass in classes}
 
     if DEBUG_FIXSUBGRAPH:
         subgraphsByclass = {thisClass:[] for thisClass in classes}
@@ -250,10 +265,10 @@ def main():
         classAwareTR = dataTR[thisClassPatternIDs.tolist()]
         ##
         if DEBUG_FIXSUBGRAPH:
-            subgraphsByclass[swarmClass] = subgraph_extr.randomExtractDataset(classAwareTR, 200)
+            subgraphsByclass[swarmClass] = subgraph_extr.randomExtractDataset(classAwareTR, N_subgraphs)
             subgraphs = [subgraphsByclass[swarmClass] for _ in population[swarmClass]]
         else:
-            subgraphs = [subgraph_extr.randomExtractDataset(classAwareTR, 20) for _ in population[swarmClass]]
+            subgraphs = [subgraph_extr.randomExtractDataset(classAwareTR, N_subgraphs) for _ in population[swarmClass]]
         ##
 
         invalid_ind = [ind for ind in population[swarmClass] if not ind.fitness.valid]
@@ -262,14 +277,10 @@ def main():
         for ind, fit in zip(invalid_ind, fitnesses):
             ind.fitness.values = fit
 
-    # if halloffame is not None:
-    #     halloffame.update(population)
+    #Log book
+    LogAgents = {gen: {thisClass:[] for thisClass in classes} for gen in range(ngen+1)}
+    LogPerf = {thisClass:[] for thisClass in classes}
 
-    # record = stats.compile(population) if stats else {}
-    # logbook.record(gen=0, nevals=len(invalid_ind), **record)
-    # if verbose:
-    #     print(logbook.stream)
-        
     # Begin the generational process   
     ClassAlphabets={thisClass:[] for thisClass in classes}
     for gen in range(1, ngen + 1):
@@ -293,7 +304,7 @@ def main():
                 if DEBUG_FIXSUBGRAPH:
                     subgraphs = [subgraphsByclass[swarmClass] for _ in pop]
                 else:
-                    subgraphs = [subgraph_extr.randomExtractDataset(classAwareTR, 20) for _ in pop]
+                    subgraphs = [subgraph_extr.randomExtractDataset(classAwareTR, N_subgraphs) for _ in pop]
 
                 #Run individual and return the partial fitness comp+card
                 fitnesses,alphabets = zip(*toolbox.map(toolbox.evaluate, zip(pop,subgraphs)))
@@ -316,7 +327,7 @@ def main():
                 
                 embeddingStrategy = SymbolicHistogram(isSymbolDiss=True,isParallel=True)
         
-                #Embedded with current symbols
+                #Embedding with current symbols
                 embeddingStrategy.getSet(expTRSet, thisGenClassAlphabet)
                 TRembeddingMatrix = np.asarray(embeddingStrategy._embeddedSet)
                 TRpatternID = embeddingStrategy._embeddedIDs
@@ -331,6 +342,7 @@ def main():
                 TRMat = TRembeddingMatrix[TRorderID,:]
                 VSMat = VSembeddingMatrix[VSorderID,:]        
                 
+                #Relabeling swarmClass = 1 others = 0
                 TRlabels = (np.asarray(dataTR.labels)==swarmClass).astype(int)
                 VSlabels= (np.asarray(dataVS.labels)==swarmClass).astype(int)
                 
@@ -338,7 +350,8 @@ def main():
                 classifier.fit(TRMat,TRlabels)
                 predictedVSLabels = classifier.predict(VSMat)
                      
-                accuracyVS = sum(predictedVSLabels==VSlabels)/len(VSlabels)
+
+                print("{},{}".format(len(VSlabels),len(predictedVSLabels)))
                 tn, fp, fn, tp = confusion_matrix(VSlabels, predictedVSLabels).ravel()
                 sensitivity = tp / (tp + fn)
                 specificity = tn / (tn + fp)
@@ -349,7 +362,9 @@ def main():
                 
                 #Feature Selection                  
                 bounds_GA2, CXPB_GA2, MUTPB_GA2, DE_Pop = FSsetup_DE(len(thisGenClassAlphabet), -1)
-                TuningResults_GA2 = differential_evolution(FSfitness_DE, bounds_GA2, 
+                
+                FS_inforDE= partial(FSfitness_DE,perfMetric = 'informedness')
+                TuningResults_GA2 = differential_evolution(FS_inforDE, bounds_GA2, 
                                                            args=(TRMat,
                                                                  VSMat, 
                                                                  TRlabels, 
@@ -373,47 +388,141 @@ def main():
                 specificity = tn / (tn + fp)
                 J = sensitivity + specificity - 1
                 J = (J + 1) / 2
-#                error_rate = 1 - J
                 
                 print("Informedness with selected symbols: {}".format(J))
 
                 #Assign the final fitness to agents
                 fitnessesRewarded = list(fitnesses)
-                #TODO: check if agents are rewarded only on the alphabet in this generation
+                ##For log
+                rewardLog = []
+                ##
                 for agent in range(len(pop)):
                     NagentSymb = sum(np.asarray(idAgents)==agent)
                     indices = np.where(np.asarray(idAgents)==agent)
                     NagentSymbolsInModel= sum(mask[indices])
 
-                    reward = J*NagentSymb/NagentSymbolsInModel if NagentSymbolsInModel else 0
+                    reward = J*NagentSymbolsInModel/NagentSymb if NagentSymb else 0
+                    rewardLog.append(reward)
                     
                     fitnessesRewarded[agent] = 0.5*(fitnesses[agent][0]+reward), #Equal weight
-                
-                
+                    
+                #Update class alphabet
                 ClassAlphabets[swarmClass]= np.asarray(thisGenClassAlphabet,dtype = object)[mask].tolist()
 
                 #invalid ind is a reference to pop
                 for ind, fit in zip(invalid_ind, tuple(fitnessesRewarded)):
                     ind.fitness.values = fit
             
-                # # Update the hall of fame with the generated individuals
-                # if halloffame is not None:
-                #     halloffame.update(offspring)
-            
-                    # Select the next generation population for the current swarm
+
+                # Select the next generation population for the current swarm
                 population[swarmClass][:] = toolbox.select(pop, mu)
                 
-                print("#########")
-                
-            print("----------------------------")
+                #Save Informedness for class and gen
+                LogPerf[swarmClass].append([J,sum(np.asarray(best_GA2)==1),len(best_GA2)])
+                #Save population at g = gen
+                LogAgents[gen][swarmClass].append([pop,fitnesses,rewardLog,fitnessesRewarded])
             
-    # # Update the statistics with the new population
-    # record = stats.compile(population) if stats is not None else {}
-    # logbook.record(gen=gen, nevals=len(invalid_ind), **record)
-    # if verbose:
-    #     print(logbook.stream)        
+            print("----------------------------")
+    
+    #Collect class alphabets and embeddeding TR,VS,TS with concatenated Alphabets
+    ALPHABETS=[alphabets for alphabets in ClassAlphabets.values()]   
+    ALPHABETS = sum(ALPHABETS,[])
+    
+    embeddingStrategy.getSet(expTRSet, ALPHABETS)
+    TRembeddingMatrix = np.asarray(embeddingStrategy._embeddedSet)
+    TRpatternID = embeddingStrategy._embeddedIDs
 
-    return population, logbook
+    embeddingStrategy.getSet(expVSSet, ALPHABETS)
+    VSembeddingMatrix = np.asarray(embeddingStrategy._embeddedSet)
+    VSpatternID = embeddingStrategy._embeddedIDs
+
+    #Resorting matrix for consistency with dataset        
+    TRorderID = np.asarray([TRpatternID.index(x) for x in dataTR.indices])
+    VSorderID = np.asarray([VSpatternID.index(x) for x in dataVS.indices])   
+
+    TRMat = TRembeddingMatrix[TRorderID,:]
+    VSMat = VSembeddingMatrix[VSorderID,:]        
+
+    #Feature Selection                  
+    bounds_GA2, CXPB_GA2, MUTPB_GA2, DE_Pop = FSsetup_DE(len(ALPHABETS), -1)
+    FS_accDE= partial(FSfitness_DE,perfMetric = 'accuracy')
+    TuningResults_GA2 = differential_evolution(FS_accDE, bounds_GA2, 
+                                               args=(TRMat,
+                                                     VSMat, 
+                                                     dataTR.labels, 
+                                                     dataVS.labels),
+                                                     maxiter=100, init=DE_Pop, 
+                                                     recombination=CXPB_GA2,
+                                                     mutation=MUTPB_GA2, 
+                                                     workers=-1, 
+                                                     polish=False, 
+                                                     updating='deferred')
+    
+    best_GA2 = [round(i) for i in TuningResults_GA2.x]
+    print("Selected {}/{} feature".format(sum(np.asarray(best_GA2)==1), len(best_GA2)))
+    
+    #Embedding with best alphabet
+    mask = np.array(best_GA2,dtype=bool)
+    classifier = KNN()
+    classifier.fit(TRMat[:, mask], dataTR.labels)
+    predictedVSmask=classifier.predict(VSMat[:, mask])
+    
+    accuracyVS = sum(predictedVSmask==np.asarray(dataVS.labels))/len(dataVS.labels)
+    print("Accuracy on VS with global alphabet: {}".format(accuracyVS))
+
+    #Embedding TS with best alphabet
+    ALPHABET = np.asarray(ALPHABETS,dtype = object)[mask].tolist()
+    embeddingStrategy.getSet(expTSSet, ALPHABET)
+    TSembeddingMatrix = np.asarray(embeddingStrategy._embeddedSet)
+    TSpatternID = embeddingStrategy._embeddedIDs   
+    TSorderID = np.asarray([TSpatternID.index(x) for x in dataTS.indices]) 
+    TSMat = TSembeddingMatrix[TSorderID,:]
+    
+    predictedTS=classifier.predict(TSMat)
+    accuracyTS = sum(predictedTS==np.asarray(dataTS.labels))/len(dataTS.labels)
+    print("Accuracy on TS with global alphabet: {}".format(accuracyTS))    
+       
+
+    return LogAgents,LogPerf,ClassAlphabets,TRMat,VSMat,predictedVSmask,dataVS.labels,TSMat,predictedTS,dataTS.labels,ALPHABETS,ALPHABET,mask
 
 if __name__ == "__main__":
-    pop, log = main()
+    
+    path = "/home/luca/Documenti/Progetti/E-ABC_v2/eabc_v2/Datasets/IAM/Letter3/"
+    name = "LetterH"
+    N_subgraphs = 20
+    ngen = 20
+    mu = 20
+    lambda_=20
+    maxorder = 6
+    
+    LogAgents, LogPerf,ClassAlphabets,TRMat,VSMat,predictedVSmask,VSlabels,TSMat,predictedTS,TSlabels, ALPHABETS,ALPHABET,mask = main(N_subgraphs,
+                                                                                                                                      path,
+                                                                                                                                      name,
+                                                                                                                                      mu,
+                                                                                                                                      lambda_,
+                                                                                                                                      ngen,
+                                                                                                                                      maxorder)
+    
+    pickle.dump({'Agents':LogAgents,
+                'PerformancesTraining':LogPerf,
+                'ClassAlphabets':ClassAlphabets,
+                'TRMat':TRMat,
+                'VSMat':VSMat,
+                'predictedVSmask':predictedVSmask,
+                'VSlabels':VSlabels,
+                'TSMat':TSMat,
+                'predictedTS':predictedTS,
+                'TSlabels':TSlabels,
+                'ALPHABETS':ALPHABETS,
+                'ALPHABET':ALPHABET,
+                'mask':mask,
+                'name':name,
+                'N_subgraphs':N_subgraphs,
+                'N_gen':ngen,
+                'Mu':mu,
+                'lambda':lambda_,
+                'max_order':maxorder
+                },
+                open(name+'.pkl','wb'))
+    
+    
