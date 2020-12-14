@@ -18,14 +18,14 @@ class extr_strategy:
             numpy.random.seed(seed)
             
         
-    def __call__(self, data):
+    def __call__(self, data, start_node=None):
         
         upperBoundOrder = self.max_order if data.x.order() > self.max_order else data.x.order()
         #TODO: else case always exclude highest value from being extracted
         order = numpy.random.randint(1, upperBoundOrder)  #high value excluded for randint         
         self.sampler.number_of_nodes = order
         
-        subgraph = self.sampler.sample(data.x)
+        subgraph = self.sampler.sample(data.x,start_node)
         subgraphData = Graph_nx()
         subgraphData.x = subgraph
         subgraphData.y = data.y
