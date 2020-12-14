@@ -7,7 +7,8 @@ Created on Fri Dec  4 11:13:37 2020
 """
 
 from sklearn.neighbors import KNeighborsClassifier
-from sklearn.metrics import confusion_matrix
+from sklearn.multiclass import OneVsRestClassifier
+from sklearn.metrics import accuracy_score, confusion_matrix
 import numpy
 
 def FSsetup_DE(alphabetSize, n_threads):
@@ -44,7 +45,7 @@ def FSsetup_DE(alphabetSize, n_threads):
 
     return bounds, CXPB, MUTPB, pop
 
-def FSfitness_DE(genetic_code, *data):
+def FSfitness_DE(genetic_code, *data,perfMetric):
     """ Fitness function for second GA (feature selection). To be used with SciPys' differential_evolution().
     Input:
     - genetic_code: Individual object provided by DEAP
@@ -73,17 +74,26 @@ def FSfitness_DE(genetic_code, *data):
     if selectedRatio == 0:
         return 2
 
-    # Classifier
-    KNN = KNeighborsClassifier(n_neighbors=5)
-    KNN.fit(trSet_EMB_InstanceMatrix[:, mask], trSet_EMB_LabelVector)
-    predicted_vsSet=KNN.predict(vsSet_EMB_InstanceMatrix[:, mask])
-    
-    tn, fp, fn, tp = confusion_matrix(vsSet_EMB_LabelVector, predicted_vsSet).ravel()
-    sensitivity = tp / (tp + fn)
-    specificity = tn / (tn + fp)
-    J = sensitivity + specificity - 1
-    J = (J + 1) / 2
-    error_rate = 1 - J  
+    if perfMetric =='informedness':
+        # Classifier
+        KNN = KNeighborsClassifier(n_neighbors=5)
+        KNN.fit(trSet_EMB_InstanceMatrix[:, mask], trSet_EMB_LabelVector)
+        predicted_vsSet=KNN.predict(vsSet_EMB_InstanceMatrix[:, mask])
+
+        tn, fp, fn, tp = confusion_matrix(vsSet_EMB_LabelVector, predicted_vsSet).ravel()
+        sensitivity = tp / (tp + fn)
+        specificity = tn / (tn + fp)
+        J = sensitivity + specificity - 1
+        J = (J + 1) / 2
+        error_rate = 1 - J
+        
+    elif perfMetric=='accuracy':
+        #Classifier
+        KNN = KNeighborsClassifier(n_neighbors=5)
+        KNNensemble=OneVsRestClassifier(KNN).fit(trSet_EMB_InstanceMatrix[:, mask], trSet_EMB_LabelVector)
+        predicted_vsSet=KNNensemble.predict(vsSet_EMB_InstanceMatrix[:, mask])
+        accuracy = accuracy_score(vsSet_EMB_LabelVector, predicted_vsSet)
+        error_rate = 1 - accuracy
 
     fitness = alpha * error_rate + (1 - alpha) * selectedRatio
     return fitness
