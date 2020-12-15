@@ -12,7 +12,7 @@ from eabc.granulators import BsasBinarySearch
 
 import numpy as np
 from deap import tools
-
+import random
 
 class eabc_Nested:
     
@@ -30,33 +30,51 @@ class eabc_Nested:
     def problemName(self):
         return self._problemName
     
-    def customXover(self,ind1,ind2):
-        
+    def customXover(self,ind1,ind2,indpb):
+        """
+        Parameters
+        ----------
+        ind1 : Deap invidual parent 1
+        ind2 : Deap invidual parent 2
+        indpb : float
+            Defined the probability that a semantically equal slices of genetic code are recombined 
+
+        Returns
+        -------
+        ind1 : Deap invidual
+        ind2 : Deap invidual
+            Recombined Individuals
+
+        """
         #Q
-        g_q1,g_q2 = tools.cxUniform([ind1[0]], [ind2[0]], indpb = 1)
+        g_q1,g_q2 = tools.cxUniform([ind1[0]], [ind2[0]], indpb = indpb)
         #GED
         g_ged1,g_ged2 = tools.cxTwoPoint(ind1[1:7], ind2[1:7])
         #Tau
-        g_tau1,g_tau2 = tools.cxUniform([ind1[7]], [ind2[7]], indpb = 1)
+        g_tau1,g_tau2 = tools.cxUniform([ind1[7]], [ind2[7]], indpb = indpb)
     
-        #
+        #Set if crossovered
         ind1[0]=g_q1[0]
         ind2[0]=g_q2[0]
-        #
-        for i,(g1,g2) in enumerate(zip(g_ged1,g_ged2),start = 1):
-            ind1[i]=g1
-        for i in range(1,7):
-            ind2[i]=g2
+        #two point crossover indivividuals are always modified. We edit this slice of genetic code only if condition is valid
+        if random.random()<indpb:
+            for i,(g1,g2) in enumerate(zip(g_ged1,g_ged2),start = 1):
+                ind1[i]=g1
+            for i in range(1,7):
+                ind2[i]=g2
         #
         ind1[7]=g_tau1[0]
         ind2[7]=g_tau2[0]
     
         if self._problemName == 'GREC':
+            
             g_add1, g_add2 =  tools.cxTwoPoint(ind1[8:13], ind2[8:13])
-            for i,(g1,g2) in enumerate(zip(g_add1,g_add2),start = 8):
-                ind1[i]=g1
-            for i in range(1,7):
-                ind2[i]=g2
+            #Same for ged attributes
+            if random.random()<indpb:
+                for i,(g1,g2) in enumerate(zip(g_add1,g_add2),start = 8):
+                    ind1[i]=g1
+                for i in range(1,7):
+                    ind2[i]=g2
             
         return ind1,ind2
     
