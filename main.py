@@ -20,16 +20,7 @@ from eabc.extractors import Extractor
 from eabc.extractors import randomwalk_restart
 from eabc.embeddings import SymbolicHistogram
 from eabc.extras.featureSelDE import FSsetup_DE,FSfitness_DE 
-
-#
-#from eabc.environments.nestedFS import customXover,customMutation,checkBounds,gene_bound,fitness
 from eabc.environments.nestedFS import eabc_Nested
-#
-
-# from eabc.representatives import Medoid
-# from eabc.dissimilarities import BMF
-# from eabc.granulators import BsasBinarySearch
-# from Datasets.IAM import Letter
 
 def IAMreader(parser,path):
     
@@ -46,146 +37,9 @@ def IAMreader(parser,path):
     
     return graphs, classes 
 
-# def customXover(ind1,ind2):
-    
-#     #Q
-#     g_01,g_02 = tools.cxUniform([ind1[0]], [ind2[0]], CXPROB)
-#     #GED
-#     g1,g2 = tools.cxTwoPoint(ind1[1:7], ind2[1:7])
-#     #Tau
-#     g_71,g_72 = tools.cxUniform([ind1[7]], [ind2[7]], CXPROB)
-
-#     #
-#     ind1[0]=g_01[0]
-#     ind2[0]=g_02[0]
-#     #
-#     for i in range(1,7):
-#         ind1[i]=g1[i-1]
-#     for i in range(1,7):
-#         ind2[i]=g2[i-1]
-#     #
-#     ind1[7]=g_71[0]
-#     ind2[7]=g_72[0]
-
-#     return ind1,ind2
-
-    
-# def fitness(args):    
-    
-#     individual,granulationBucket = args
-#     Q= individual[0]
-#     wNSub= individual[1]
-#     wNIns= individual[2]
-#     wNDel= individual[3]
-#     wESub= individual[4]
-#     wEIns= individual[5]
-#     wEDel= individual[6]
-#     tau = individual[7]
-    
-#     Repr=Medoid
-    
-#     #TODO:edit for change dataset
-#     diss = Letter.LETTERdiss()
-
-#     graphDist=BMF(diss.nodeDissimilarity,diss.edgeDissimilarity)
-#     graphDist.nodeSubWeight=wNSub
-#     graphDist.nodeInsWeight=wNIns
-#     graphDist.nodeDelWeight=wNDel
-#     graphDist.edgeSubWeight=wESub
-#     graphDist.edgeInsWeight=wEIns
-#     graphDist.edgeDelWeight=wEDel
-    
-#     granulationStrategy = BsasBinarySearch(graphDist,Repr,0.1)
-#     granulationStrategy.BsasQmax = Q
-  
-#     granulationStrategy.symbol_thr = tau
-    
-#     granulationStrategy.granulate(granulationBucket)
-#     f_sym = np.array([symbol.Fvalue for symbol in granulationStrategy.symbols])
-# #    f = np.average(f_sym) if f_sym.size!=0 else np.nan
-#     f = 1-np.average(f_sym) if f_sym.size!=0 else np.nan     
-    
-#     fitness = f if not np.isnan(f) else 0
-    
-#     return (fitness,), granulationStrategy.symbols
-
-
-# def checkBounds():
-#     def decorator(func):
-#         def wrapper(*args, **kargs):
-#             offspring = func(*args, **kargs)
-#             for child in offspring:
-#                 if child[0] < 1:
-#                     child[0] = 1
-#                 elif child[0]>QMAX/15: # number of letter classes
-#                     child[0] = QMAX/15 
-#                 for i in range(1,len(child)):
-#                     if child[i] > 1:
-#                         child[i] = 1
-#                     elif child[i] <= 0:
-#                         child[i] = np.finfo(float).eps
-#             return offspring
-#         return wrapper
-#     return decorator
-
-# def gene_bound():
-#     ranges=[np.random.randint(1, QMAX), #BSAS q value bound 
-#             np.random.uniform(0, 1), #GED node wcosts
-#             np.random.uniform(0, 1),
-#             np.random.uniform(0, 1),
-#             np.random.uniform(0, 1), #GED edge wcosts
-#             np.random.uniform(0, 1),
-#             np.random.uniform(0, 1),
-#             np.random.uniform(np.finfo(float).eps, 1)] #Symbol Threshold
-
-#     return ranges
-
-
 
 def main(dataTR,dataVS,dataTS,N_subgraphs,mu,lambda_,ngen,maxorder,cxpb,mutpb):
     
-    # random.seed(64)
-   
-    # cxpb=CXPROB
-    # mutpb=MUTPROB
-
-    # ###################
-    # print("Loading...")
-    
-    
-    # IAMreadergraph = partial(IAMreader,name=name)
-    # rawtr = graph_nxDataset(path+"Training/", name, reader = IAMreadergraph)
-    # rawvs = graph_nxDataset(path+"Validation/", name, reader = IAMreadergraph)    
-    # rawts = graph_nxDataset(path+"Test/", name, reader = IAMreadergraph)
-
-    # #DEBUG
-    # rawtr = rawtr.shuffle()
-    # rawvs = rawvs.shuffle()
-    # #Removed not connected graph and null graph!
-    # cleanDataTr,cleanDataVs,cleanDataTs=[],[],[]
-    # for dataset,cleanData in zip([rawtr,rawvs,rawts],[cleanDataTr,cleanDataVs,cleanDataTs]):
-    #     for g,idx,label in zip(dataset.data,dataset.indices,dataset.labels):
-    #         if not nx.is_empty(g):
-    #             if nx.is_connected(g):
-    #                 cleanData.append((g,idx,label)) 
-
-    # cleanDataTr = np.asarray(cleanDataTr,dtype=object)
-    # cleanDataVs = np.asarray(cleanDataVs,dtype=object)
-    # cleanDataTs = np.asarray(cleanDataTs,dtype=object)    
-    
-    # normalize('coords',cleanDataTr[:,0],cleanDataVs[:,0],cleanDataTs[:,0])
-    
-    # #Slightly different from dataset used in pygralg
-    # dataTR = graph_nxDataset([cleanDataTr[:100,0],cleanDataTr[:100,2]],name, idx = cleanDataTr[:100,1])
-    # dataVS = graph_nxDataset([cleanDataVs[:100,0],cleanDataVs[:100,2]],name, idx = cleanDataVs[:100,1])    
-    # dataTS = graph_nxDataset([cleanDataTs[:100,0],cleanDataTs[:100,2]],name, idx = cleanDataTs[:100,1])    
-
-    # del rawtr
-    # del rawvs
-    # del rawts
-    # ##################
-
-
     print("Setup...")
     #Graph decomposition
     extract_func = randomwalk_restart.extr_strategy(max_order=maxorder)
@@ -463,7 +317,12 @@ def main(dataTR,dataVS,dataTS,N_subgraphs,mu,lambda_,ngen,maxorder,cxpb,mutpb):
     return LogAgents,LogPerf,ClassAlphabets,TRMat,VSMat,predictedVSmask,dataVS.labels,TSMat,predictedTS,dataTS.labels,ALPHABETS,ALPHABET,mask
 
 if __name__ == "__main__":
-    
+
+
+    seed = 64
+    random.seed(seed)    
+    # Parameter setup
+    # They should be setted by cmd line
     # path = "/home/luca/Documenti/Progetti/E-ABC_v2/eabc_v2/Datasets/IAM/Letter3/"
     # name = "LetterH"
     path = "/home/luca/Documenti/Progetti/E-ABC_v2/eabc_v2/Datasets/IAM/GREC/"
@@ -473,12 +332,12 @@ if __name__ == "__main__":
     mu = 20
     lambda_=20
     maxorder = 6
-    
-    random.seed(64)
-    QMAX = 500
     CXPROB = 0.33
     MUTPROB = 0.33
-    
+    INDCXP = 0.3
+    INDMUTP = 0.1
+    QMAX = 500
+
     #Maximizing
     creator.create("FitnessMax", base.Fitness, weights=(1.0,))
     creator.create("Individual", list, fitness=creator.FitnessMax)
@@ -488,22 +347,6 @@ if __name__ == "__main__":
     #Multiprocessing map
     pool = multiprocessing.Pool()
     toolbox.register("map", pool.map)
-    
-
-    
-    #Operators and inialization
-    # toolbox.register("attr_genes", gene_bound,QMAX = QMAX)
-    # toolbox.register("individual", tools.initIterate,
-    #                 creator.Individual, toolbox.attr_genes)
-    # toolbox.register("population", tools.initRepeat, list, toolbox.individual,n=100)  
-    # toolbox.register("evaluate", fitness)
-    # toolbox.register("mate", customXover)
-    # toolbox.register("mutate", customMutation,sigma = 0.05,indpb=0.05)
-    # toolbox.register("select", tools.selTournament, tournsize=5)
-
-    # #Decorator bound    
-    # toolbox.decorate("mate", checkBounds(QMAX,scale_factor))
-    # toolbox.decorate("mutate", checkBounds(QMAX,scale_factor))
 
 
     ###Preprocessing
@@ -520,9 +363,6 @@ if __name__ == "__main__":
     rawvs = graph_nxDataset(path+"Validation/", name, reader = IAMreadergraph)    
     rawts = graph_nxDataset(path+"Test/", name, reader = IAMreadergraph)
 
-    #DEBUG
-    # rawtr = rawtr.shuffle()
-    # rawvs = rawvs.shuffle()
     #Removed not connected graph and null graph!
     cleanDataTr,cleanDataVs,cleanDataTs=[],[],[]
     for dataset,cleanData in zip([rawtr,rawvs,rawts],[cleanDataTr,cleanDataVs,cleanDataTs]):
@@ -567,8 +407,8 @@ if __name__ == "__main__":
                     creator.Individual, toolbox.attr_genes)
     toolbox.register("population", tools.initRepeat, list, toolbox.individual,n=100)  
     toolbox.register("evaluate", eabc_Nested.fitness)
-    toolbox.register("mate", eabc_Nested.customXover)
-    toolbox.register("mutate", eabc_Nested.customMutation,sigma = 0.05,indpb=0.05)
+    toolbox.register("mate", eabc_Nested.customXover,indpb=INDCXP)
+    toolbox.register("mutate", eabc_Nested.customMutation,sigma = 0.1,indpb=INDMUTP)
     toolbox.register("select", tools.selTournament, tournsize=5)
 
     #Decorator bound    
@@ -589,6 +429,11 @@ if __name__ == "__main__":
 
     pickle.dump({'Name': name,
                  'Path': path,
+                 'CrossOverPr':CXPROB,
+                 'MutationPr':MUTPROB,
+                 'IndXoverPr':INDCXP,
+                 'IndMutPr':INDMUTP,
+                 'Seed':seed,
                 'Agents':LogAgents,
                 'PerformancesTraining':LogPerf,
                 'ClassAlphabets':ClassAlphabets,
