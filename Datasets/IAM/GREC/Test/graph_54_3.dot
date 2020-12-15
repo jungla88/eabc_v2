@@ -1,0 +1,27 @@
+graph "sampletest150-mod1_image3.bmp" {
+	0	 [type=circle,
+		x=268,
+		y=295];
+	1	 [type=corner,
+		x=413,
+		y=363];
+	4	 [type=corner,
+		x=125,
+		y=359];
+	1 -- 4	 [angle0=".01",
+		angle1="309.48",
+		frequency=2,
+		type0=line,
+		type1=arc];
+	2	 [type=corner,
+		x=111,
+		y=416];
+	3	 [type=corner,
+		x=399,
+		y=397];
+	2 -- 3	 [angle0="374.81",
+		angle1="-.07",
+		frequency=2,
+		type0=arc,
+		type1=line];
+}

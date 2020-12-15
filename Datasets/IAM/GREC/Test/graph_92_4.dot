@@ -1,0 +1,32 @@
+graph "sampletest150-mod5_image4.bmp" {
+	0	 [type=corner,
+		x=514,
+		y=4];
+	2	 [type=corner,
+		x=529,
+		y=504];
+	0 -- 2	 [angle0="1.54",
+		frequency=1,
+		type0=line];
+	3	 [type=intersection,
+		x=7,
+		y="-22"];
+	0 -- 3	 [angle0=".05",
+		frequency=1,
+		type0=line];
+	1	 [type=corner,
+		x="-6",
+		y=494];
+	1 -- 2	 [angle0=".02",
+		frequency=1,
+		type0=line];
+	1 -- 3	 [angle0="-1.55",
+		frequency=1,
+		type0=line];
+	4	 [type=endpoint,
+		x=47,
+		y=15];
+	3 -- 4	 [angle0=".75",
+		frequency=1,
+		type0=line];
+}
