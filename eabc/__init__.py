@@ -8,3 +8,4 @@ import eabc.dissimilarities
 import eabc.representatives
 import eabc.embeddings
 import eabc.extras
+import eabc.environments
