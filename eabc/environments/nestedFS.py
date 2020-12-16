@@ -25,6 +25,9 @@ class eabc_Nested:
             assert(all(DissNormFactors))
             self._VertexDissWeight=DissNormFactors[0]
             self._EdgeDissWeight=DissNormFactors[1]
+        if self._problemName == 'AIDS':
+            assert(DissNormFactors[0])
+            self._VertexDissWeight = DissNormFactors[0]
         
     @property
     def problemName(self):
@@ -44,6 +47,9 @@ class eabc_Nested:
         ind1 : Deap invidual
         ind2 : Deap invidual
             Recombined Individuals
+        
+        Semantically equal slice are recombined together. If the slice is a single attribute cxUniform is used,
+        CxTwoPoint deap crossover is used in the other case. Each slice has a given indpb probability to be recombined.
 
         """
         #Q
@@ -110,11 +116,11 @@ class eabc_Nested:
             diss.e2 = eParam2
             diss.e3 = eParam3
             diss.e4 = eParam4
-            
+        
+        elif self._problemName == 'AIDS':
+            diss = self._dissimilarityClass(vertexWeight= self._VertexDissWeight)
         else:
             diss = self._dissimilarityClass()
-        # elif self._problemName == ('LetterL' or 'LetterM' or 'LetterH'):
-        #     diss = self._dissimilarityClass()
         
         Repr=Medoid
     

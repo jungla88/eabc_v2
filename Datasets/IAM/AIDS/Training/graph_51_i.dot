@@ -1,0 +1,25 @@
+graph molid112212 {
+	_1	 [charge=0,
+		chem=1,
+		symbol="C  ",
+		x="2.866",
+		y="0.25"];
+	_2	 [charge=0,
+		chem=1,
+		symbol="C  ",
+		x="3.7321",
+		y="0.75"];
+	_1 -- _2	 [valence=1];
+	_3	 [charge=0,
+		chem=2,
+		symbol="O  ",
+		x=2,
+		y="0.75"];
+	_1 -- _3	 [valence=2];
+	_4	 [charge=0,
+		chem=2,
+		symbol="O  ",
+		x="2.866",
+		y="-0.75"];
+	_1 -- _4	 [valence=1];
+}

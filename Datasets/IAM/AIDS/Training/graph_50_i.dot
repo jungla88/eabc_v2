@@ -1,0 +1,13 @@
+graph molid12957 {
+	_1	 [charge=0,
+		chem=22,
+		symbol="F  ",
+		x=2,
+		y=0];
+	_2	 [charge=0,
+		chem=23,
+		symbol="Li ",
+		x=3,
+		y=0];
+	_1 -- _2	 [valence=1];
+}

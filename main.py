@@ -14,7 +14,7 @@ from sklearn.metrics import confusion_matrix
 from scipy.optimize import differential_evolution
 
 from Datasets.IAM import IamDotLoader
-from Datasets.IAM import Letter,GREC
+from Datasets.IAM import Letter,GREC,AIDS
 from eabc.datasets import graph_nxDataset
 from eabc.extractors import Extractor
 from eabc.extractors import randomwalk_restart
@@ -325,8 +325,10 @@ if __name__ == "__main__":
     # They should be setted by cmd line
     # path = "/home/luca/Documenti/Progetti/E-ABC_v2/eabc_v2/Datasets/IAM/Letter3/"
     # name = "LetterH"
-    path = "/home/luca/Documenti/Progetti/E-ABC_v2/eabc_v2/Datasets/IAM/GREC/"
-    name = "GREC"    
+    # path = "/home/luca/Documenti/Progetti/E-ABC_v2/eabc_v2/Datasets/IAM/GREC/"
+    # name = "GREC"  
+    path = "/home/luca/Documenti/Progetti/E-ABC_v2/eabc_v2/Datasets/IAM/AIDS/"
+    name = "AIDS" 
     N_subgraphs = 20
     ngen = 1
     mu = 20
@@ -356,6 +358,10 @@ if __name__ == "__main__":
         parser = Letter.parser
     elif name == 'GREC':
         parser = GREC.parser
+    elif name == 'AIDS':
+        parser = AIDS.parser
+    else:
+        raise FileNotFoundError
         
     
     IAMreadergraph = partial(IAMreader,parser)
@@ -380,6 +386,8 @@ if __name__ == "__main__":
         weights = Letter.normalize('coords',cleanDataTr[:,0],cleanDataVs[:,0],cleanDataTs[:,0])
     elif name == 'GREC':
         weights = GREC.normalize(cleanDataTr[:,0],cleanDataVs[:,0],cleanDataTs[:,0])
+    elif name == 'AIDS':
+        weights = AIDS.normalize(cleanDataTr[:,0],cleanDataVs[:,0],cleanDataTs[:,0])
     
     #Slightly different from dataset used in pygralg
     dataTR = graph_nxDataset([cleanDataTr[:100,0],cleanDataTr[:100,2]],name, idx = cleanDataTr[:100,1])
@@ -396,6 +404,8 @@ if __name__ == "__main__":
         Dissimilarity = GREC.GRECdiss
     elif name == ('LetterH' or 'LetterM' or 'LetterL'):
         Dissimilarity = Letter.LETTERdiss
+    elif name == 'AIDS':
+        Dissimilarity = AIDS.AIDSdiss
 
     eabc_Nested = eabc_Nested(DissimilarityClass=Dissimilarity,problemName = name,DissNormFactors=weights)
     
