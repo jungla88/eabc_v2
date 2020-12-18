@@ -84,9 +84,13 @@ class eabc_Nested:
             
         return ind1,ind2
     
-    def customMutation(self,ind,sigma,indpb):
+    def customMutation(self,ind,mu,indpb):
         
-        mu = [ind[i] for i in range(len(ind))]
+#        mu = [ind[i] for i in range(len(ind))]
+        sigmaQ = [10]
+        sigma01 = [0.1 for _ in range(len(ind))]
+        #Assuming genes  [Q, 01bounded, ... ]
+        sigma = sigmaQ+sigma01
         return tools.mutGaussian(ind, mu, sigma, indpb)
         
     def fitness(self,args):    
@@ -149,7 +153,7 @@ class eabc_Nested:
         return (fitness,), granulationStrategy.symbols
     
     @staticmethod
-    def checkBounds(QMAX,scaleFactor):
+    def checkBounds(QMAX):
         def decorator(func):
             def wrapper(*args, **kargs):
                 offspring = func(*args, **kargs)
@@ -157,8 +161,8 @@ class eabc_Nested:
                     child[0] = round(child[0])
                     if child[0] < 1:
                        child[0] = 1
-                    elif child[0]>QMAX/scaleFactor:
-                        child[0] = round(QMAX/scaleFactor)
+                    elif child[0]>QMAX:
+                        child[0] = QMAX
                     for i in range(1,len(child)):
                         if child[i] > 1:
                             child[i] = 1
