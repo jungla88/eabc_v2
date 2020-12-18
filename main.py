@@ -42,37 +42,39 @@ def main(dataTR,dataVS,dataTS,N_subgraphs,mu,lambda_,ngen,maxorder,cxpb,mutpb):
     
     print("Setup...")
     #Graph decomposition
-    extract_func = randomwalk_restart.extr_strategy(max_order=maxorder)
+    # extract_func = randomwalk_restart.extr_strategy(max_order=maxorder)
+    extract_func = randomwalk_restart.extr_strategy()
     subgraph_extr = Extractor(extract_func)
 
-
-    expTRSet = dataTR.fresh_dpcopy()
-    for i,x in enumerate(dataTR):
-        k=0
-        while(k<50):
-            for j in range(1,maxorder):
-                subgraph_extr.max_order=j
-                expTRSet.add_keyVal(dataTR.to_key(i),subgraph_extr.extract(x))
-            k+=6
-    expVSSet = dataVS.fresh_dpcopy()
-    for i,x in enumerate(dataVS):
-        k=0
-        while(k<50):
-            for j in range(1,maxorder):
-                subgraph_extr.max_order=j
-                expVSSet.add_keyVal(dataVS.to_key(i),subgraph_extr.extract(x))
-            k+=6
-            expVSSet.add_keyVal(dataVS.to_key(i),subgraph_extr.extract(x))
-    expTSSet = dataTS.fresh_dpcopy()
-    for i,x in enumerate(dataTS):
-        k=0
-        while(k<50):
-            for j in range(1,maxorder):
-                subgraph_extr.max_order=j
-                expTSSet.add_keyVal(dataTS.to_key(i),subgraph_extr.extract(x))
-            k+=6
-            expTSSet.add_keyVal(dataTS.to_key(i),subgraph_extr.extract(x))            
-
+    expTRSet = subgraph_extr.decomposeGraphDataset(dataTR,maxOrder= maxorder)
+    expVSSet = subgraph_extr.decomposeGraphDataset(dataVS,maxOrder= maxorder)
+    expTSSet = subgraph_extr.decomposeGraphDataset(dataTS,maxOrder= maxorder)
+    
+    # expTRSet = dataTR.fresh_dpcopy()
+    # for i,x in enumerate(dataTR):
+    #     k=0
+    #     while(k<50):
+    #         for j in range(1,maxorder+1):
+    #             extract_func.order=j
+    #             expTRSet.add_keyVal(dataTR.to_key(i),subgraph_extr.extract(x))
+    #         k+=5
+    # for i,x in enumerate(dataVS):
+    #     k=0
+    #     while(k<50):
+    #         for j in range(1,maxorder+1):
+    #             extract_func.order=j
+    #             expVSSet.add_keyVal(dataVS.to_key(i),subgraph_extr.extract(x))
+    #         k+=5
+    #         expVSSet.add_keyVal(dataVS.to_key(i),subgraph_extr.extract(x))
+    # expTSSet = dataTS.fresh_dpcopy()
+    # for i,x in enumerate(dataTS):
+    #     k=0
+    #     while(k<50):
+    #         for j in range(1,maxorder+1):
+    #             extract_func.order=j
+    #             expTSSet.add_keyVal(dataTS.to_key(i),subgraph_extr.extract(x))
+    #         k+=5
+    #         expTSSet.add_keyVal(dataTS.to_key(i),subgraph_extr.extract(x))            
     
 
 
@@ -227,11 +229,11 @@ def main(dataTR,dataVS,dataTS,N_subgraphs,mu,lambda_,ngen,maxorder,cxpb,mutpb):
                 rewardLog = []
                 ##
                 for agent in range(len(pop)):
-                    NagentSymb = sum(np.asarray(idAgents)==agent)
+                    #NagentSymb = sum(np.asarray(idAgents)==agent)
                     indices = np.where(np.asarray(idAgents)==agent)
                     NagentSymbolsInModel= sum(mask[indices])
 
-                    reward = J*NagentSymbolsInModel/NagentSymb if NagentSymb else 0
+                    reward = J*NagentSymbolsInModel/sum(np.asarray(best_GA2)==1)
                     rewardLog.append(reward)
                     
                     fitnessesRewarded[agent] = 0.5*(fitnesses[agent][0]+reward), #Equal weight
@@ -323,21 +325,22 @@ if __name__ == "__main__":
     random.seed(seed)    
     # Parameter setup
     # They should be setted by cmd line
-    # path = "/home/luca/Documenti/Progetti/E-ABC_v2/eabc_v2/Datasets/IAM/Letter3/"
-    # name = "LetterH"
+    path = "/home/luca/Documenti/Progetti/E-ABC_v2/eabc_v2/Datasets/IAM/Letter3/"
+    name = "LetterH"
     # path = "/home/luca/Documenti/Progetti/E-ABC_v2/eabc_v2/Datasets/IAM/GREC/"
     # name = "GREC"  
-    path = "/home/luca/Documenti/Progetti/E-ABC_v2/eabc_v2/Datasets/IAM/AIDS/"
-    name = "AIDS" 
+    # path = "/home/luca/Documenti/Progetti/E-ABC_v2/eabc_v2/Datasets/IAM/AIDS/"
+    # name = "AIDS" 
     N_subgraphs = 20
     ngen = 1
     mu = 20
     lambda_=20
-    maxorder = 6
+    maxorder = 5
     CXPROB = 0.33
     MUTPROB = 0.33
     INDCXP = 0.3
     INDMUTP = 0.1
+    TOURNSIZE = 5
     QMAX = 500
 
     #Maximizing
@@ -365,38 +368,49 @@ if __name__ == "__main__":
         
     
     IAMreadergraph = partial(IAMreader,parser)
-    rawtr = graph_nxDataset(path+"Training/", name, reader = IAMreadergraph)
-    rawvs = graph_nxDataset(path+"Validation/", name, reader = IAMreadergraph)    
-    rawts = graph_nxDataset(path+"Test/", name, reader = IAMreadergraph)
+    rawtr = graph_nxDataset(path+"Training/", name, reader = IAMreadergraph)[:100]
+    rawvs = graph_nxDataset(path+"Validation/", name, reader = IAMreadergraph)[:100] 
+    rawts = graph_nxDataset(path+"Test/", name, reader = IAMreadergraph)[:100]
 
-    #Removed not connected graph and null graph!
-    cleanDataTr,cleanDataVs,cleanDataTs=[],[],[]
-    for dataset,cleanData in zip([rawtr,rawvs,rawts],[cleanDataTr,cleanDataVs,cleanDataTs]):
-        for g,idx,label in zip(dataset.data,dataset.indices,dataset.labels):
-            if not nx.is_empty(g):
-                if nx.is_connected(g):
-                    cleanData.append((g,idx,label)) 
+    # #Removed not connected graph and null graph
+    # cleanDataTr,cleanDataVs,cleanDataTs=[],[],[]
+    # for dataset,cleanData in zip([rawtr,rawvs,rawts],[cleanDataTr,cleanDataVs,cleanDataTs]):
+    #     for g,idx,label in zip(dataset.data,dataset.indices,dataset.labels):
+    #         if not nx.is_empty(g):
+    #             if nx.is_connected(g):
+    #                 cleanData.append((g,idx,label)) 
 
-    #Cleaning and normalizing and retrieving norm values
-    cleanDataTr = np.asarray(cleanDataTr,dtype=object)
-    cleanDataVs = np.asarray(cleanDataVs,dtype=object)
-    cleanDataTs = np.asarray(cleanDataTs,dtype=object)    
-    
+    # #Cleaning and normalizing and retrieving norm values
+    # cleanDataTr = np.asarray(cleanDataTr,dtype=object)
+    # cleanDataVs = np.asarray(cleanDataVs,dtype=object)
+    # cleanDataTs = np.asarray(cleanDataTs,dtype=object)    
+
+    ####
     if name == ('LetterH' or 'LetterM' or 'LetterL'):  
-        weights = Letter.normalize('coords',cleanDataTr[:,0],cleanDataVs[:,0],cleanDataTs[:,0])
+        weights = Letter.normalize('coords',rawtr.data,rawvs.data,rawts.data)
     elif name == 'GREC':
-        weights = GREC.normalize(cleanDataTr[:,0],cleanDataVs[:,0],cleanDataTs[:,0])
+        weights = GREC.normalize(rawtr.data,rawvs.data,rawts.data)
     elif name == 'AIDS':
-        weights = AIDS.normalize(cleanDataTr[:,0],cleanDataVs[:,0],cleanDataTs[:,0])
+        weights = AIDS.normalize(rawtr.data,rawvs.data,rawts.data)
+    ###
+    # if name == ('LetterH' or 'LetterM' or 'LetterL'):  
+    #     weights = Letter.normalize('coords',cleanDataTr[:,0],cleanDataVs[:,0],cleanDataTs[:,0])
+    # elif name == 'GREC':
+    #     weights = GREC.normalize(cleanDataTr[:,0],cleanDataVs[:,0],cleanDataTs[:,0])
+    # elif name == 'AIDS':
+    #     weights = AIDS.normalize(cleanDataTr[:,0],cleanDataVs[:,0],cleanDataTs[:,0])
     
     #Slightly different from dataset used in pygralg
-    dataTR = graph_nxDataset([cleanDataTr[:100,0],cleanDataTr[:100,2]],name, idx = cleanDataTr[:100,1])
-    dataVS = graph_nxDataset([cleanDataVs[:100,0],cleanDataVs[:100,2]],name, idx = cleanDataVs[:100,1])    
-    dataTS = graph_nxDataset([cleanDataTs[:100,0],cleanDataTs[:100,2]],name, idx = cleanDataTs[:100,1])    
+    dataTR = rawtr
+    dataVS = rawvs
+    dataTS = rawts
+    # dataTR = graph_nxDataset([cleanDataTr[:100,0],cleanDataTr[:100,2]],name, idx = cleanDataTr[:100,1])
+    # dataVS = graph_nxDataset([cleanDataVs[:100,0],cleanDataVs[:100,2]],name, idx = cleanDataVs[:100,1])    
+    # dataTS = graph_nxDataset([cleanDataTs[:100,0],cleanDataTs[:100,2]],name, idx = cleanDataTs[:100,1])    
 
-    del rawtr
-    del rawvs
-    del rawts
+    # del rawtr
+    # del rawvs
+    # del rawts
     
     
     #Create type for the problem
@@ -409,21 +423,25 @@ if __name__ == "__main__":
 
     eabc_Nested = eabc_Nested(DissimilarityClass=Dissimilarity,problemName = name,DissNormFactors=weights)
     
+    #Q scaling
     scale_factor = len(np.unique(dataTR.labels,dataVS.labels,dataTS.labels))
+    scaledQ = round(QMAX/scale_factor)
     
-    toolbox.register("attr_genes", eabc_Nested.gene_bound,QMAX = QMAX)
+    toolbox.register("attr_genes", eabc_Nested.gene_bound,QMAX = scaledQ)
     
     toolbox.register("individual", tools.initIterate,
                     creator.Individual, toolbox.attr_genes)
     toolbox.register("population", tools.initRepeat, list, toolbox.individual,n=100)  
     toolbox.register("evaluate", eabc_Nested.fitness)
     toolbox.register("mate", eabc_Nested.customXover,indpb=INDCXP)
-    toolbox.register("mutate", eabc_Nested.customMutation,sigma = 0.1,indpb=INDMUTP)
-    toolbox.register("select", tools.selTournament, tournsize=5)
+    #Setup mutation
+    toolbox.register("mutate", eabc_Nested.customMutation,mu = 0, indpb=INDMUTP)
+    toolbox.register("select", tools.selTournament, tournsize=TOURNSIZE)
 
     #Decorator bound    
-    toolbox.decorate("mate", eabc_Nested.checkBounds(QMAX,scale_factor))
-    toolbox.decorate("mutate", eabc_Nested.checkBounds(QMAX,scale_factor))
+    toolbox.decorate("mate", eabc_Nested.checkBounds(scaledQ))
+    toolbox.decorate("mutate", eabc_Nested.checkBounds(scaledQ))
+    
     LogAgents, LogPerf,ClassAlphabets,TRMat,VSMat,predictedVSmask,VSlabels,TSMat,predictedTS,TSlabels, ALPHABETS,ALPHABET,mask = main(dataTR,
                                                                                                                                       dataVS,
                                                                                                                                       dataTS,
@@ -443,11 +461,13 @@ if __name__ == "__main__":
                  'MutationPr':MUTPROB,
                  'IndXoverPr':INDCXP,
                  'IndMutPr':INDMUTP,
+                 'TournamentSize':TOURNSIZE,
                  'Seed':seed,
                 'Agents':LogAgents,
                 'PerformancesTraining':LogPerf,
                 'ClassAlphabets':ClassAlphabets,
                 'TRMat':TRMat,
+                'TRlabels':dataTR.labels,
                 'VSMat':VSMat,
                 'predictedVSmask':predictedVSmask,
                 'VSlabels':VSlabels,
@@ -457,7 +477,6 @@ if __name__ == "__main__":
                 'ALPHABETS':ALPHABETS,
                 'ALPHABET':ALPHABET,
                 'mask':mask,
-                'name':name,
                 'N_subgraphs':N_subgraphs,
                 'N_gen':ngen,
                 'Mu':mu,
