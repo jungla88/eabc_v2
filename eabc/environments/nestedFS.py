@@ -48,8 +48,8 @@ class eabc_Nested:
         ind2 : Deap invidual
             Recombined Individuals
         
-        Semantically equal slice are recombined together. If the slice is a single attribute cxUniform is used,
-        CxTwoPoint deap crossover is used in the other case. Each slice has a given indpb probability to be recombined.
+        Semantically equal slice are recombined together with indpb probability. If the slice is a single attribute cxUniform is used,
+        CxTwoPoint deap crossover is used in the other case. 
 
         """
         #Q
@@ -85,7 +85,23 @@ class eabc_Nested:
         return ind1,ind2
     
     def customMutation(self,ind,mu,indpb):
+        """
+
+        Parameters
+        ----------
+        ind : Deap individual
+        mu : scalar value for gaussian mean value
+        indpb : scalar value in [0,1] for individual gene probability of mutation
+
+        Returns
+        -------
+        Mutated individual
         
+        Description
+        ------
+        Each individual gene in in is mutated with dea mutGaussian function.
+        Gaussian mean should be null, whereas the sigma is defined as a sequence for each guassian as required by deap mutGaussian
+        """
 #        mu = [ind[i] for i in range(len(ind))]
         sigmaQ = [10]
         sigma01 = [0.1 for _ in range(len(ind))]
@@ -94,6 +110,25 @@ class eabc_Nested:
         return tools.mutGaussian(ind, mu, sigma, indpb)
         
     def fitness(self,args):    
+        """
+        
+
+        Parameters
+        ----------
+        args : 2-length list with sequences of individual and bucket
+
+        Returns
+        -------
+        fitness : a tuple-like fitness value
+        symbols : a list of symbols synthesized by the agent.
+        
+        Description:
+        -------
+        
+        According to individual genes, a Dissimilarity and a Granulator are instantiated with suitable parameters.
+        Genetic optimization tries to maximise the average 1-F value of the symbol synthesized since lower value of F are better.
+
+        """
         
         individual,granulationBucket = args
         Q= individual[0]
@@ -154,6 +189,20 @@ class eabc_Nested:
     
     @staticmethod
     def checkBounds(QMAX):
+        """
+        Parameters
+        ----------
+        QMAX : Integer
+            Bound for gene.
+
+        Returns
+        -------
+        None.
+        
+        Description
+        -------
+        First gene is bounded in [1,Qmax] and [0,1] otherwise.
+        """
         def decorator(func):
             def wrapper(*args, **kargs):
                 offspring = func(*args, **kargs)
@@ -172,7 +221,22 @@ class eabc_Nested:
             return wrapper
         return decorator
     
+
     def gene_bound(self,QMAX):
+        """
+        
+
+        Parameters
+        ----------
+        QMAX : Integer
+            Qmax value for BSAS granulator.
+
+        Returns
+        -------
+        ranges : List-like mixed integer and float values 
+            Initial values for breeded individual
+
+        """
         ranges=[np.random.randint(1, QMAX), #BSAS q value bound 
                 np.random.uniform(0, 1), #GED node wcosts
                 np.random.uniform(0, 1),
