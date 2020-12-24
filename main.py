@@ -49,41 +49,16 @@ def main(dataTR,dataVS,dataTS,N_subgraphs,mu,lambda_,ngen,maxorder,cxpb,mutpb):
     expTRSet = subgraph_extr.decomposeGraphDataset(dataTR,maxOrder= maxorder)
     expVSSet = subgraph_extr.decomposeGraphDataset(dataVS,maxOrder= maxorder)
     expTSSet = subgraph_extr.decomposeGraphDataset(dataTS,maxOrder= maxorder)
-    
-    # expTRSet = dataTR.fresh_dpcopy()
-    # for i,x in enumerate(dataTR):
-    #     k=0
-    #     while(k<50):
-    #         for j in range(1,maxorder+1):
-    #             extract_func.order=j
-    #             expTRSet.add_keyVal(dataTR.to_key(i),subgraph_extr.extract(x))
-    #         k+=5
-    # for i,x in enumerate(dataVS):
-    #     k=0
-    #     while(k<50):
-    #         for j in range(1,maxorder+1):
-    #             extract_func.order=j
-    #             expVSSet.add_keyVal(dataVS.to_key(i),subgraph_extr.extract(x))
-    #         k+=5
-    #         expVSSet.add_keyVal(dataVS.to_key(i),subgraph_extr.extract(x))
-    # expTSSet = dataTS.fresh_dpcopy()
-    # for i,x in enumerate(dataTS):
-    #     k=0
-    #     while(k<50):
-    #         for j in range(1,maxorder+1):
-    #             extract_func.order=j
-    #             expTSSet.add_keyVal(dataTS.to_key(i),subgraph_extr.extract(x))
-    #         k+=5
-    #         expTSSet.add_keyVal(dataTS.to_key(i),subgraph_extr.extract(x))            
-    
-
-
+        
     ##################
     # Evaluate the individuals with an invalid fitness
     DEBUG_FIXSUBGRAPH = False
+    DEBUG_FITNESS = True
     print("Initializing populations...")
     if DEBUG_FIXSUBGRAPH:
         print("DEBUG SUBGRAPH STOCHASTIC TRUE")
+    if DEBUG_FITNESS:
+        print("DEBUG FITNESS TRUE")
     classes= dataTR.unique_labels()
     #Initialize a dict of swarms - {key:label - value:deap popolution}
     population = {thisClass:toolbox.population(n=mu) for thisClass in classes}
@@ -236,7 +211,12 @@ def main(dataTR,dataVS,dataTS,N_subgraphs,mu,lambda_,ngen,maxorder,cxpb,mutpb):
                     reward = J*NagentSymbolsInModel/sum(np.asarray(best_GA2)==1)
                     rewardLog.append(reward)
                     
-                    fitnessesRewarded[agent] = 0.5*(fitnesses[agent][0]+reward), #Equal weight
+                    if DEBUG_FITNESS:
+                        
+                        fitnessesRewarded[agent] = reward
+                    else:
+                        
+                        fitnessesRewarded[agent] = 0.5*(fitnesses[agent][0]+reward), #Equal weight
                     
                 #Update class alphabet
                 ClassAlphabets[swarmClass]= np.asarray(thisGenClassAlphabet,dtype = object)[mask].tolist()
