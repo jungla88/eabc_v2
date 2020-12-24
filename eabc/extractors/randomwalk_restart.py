@@ -39,7 +39,7 @@ class extr_strategy:
         G = data.x
         #For littleballoffur assumption connectivity
         #Take the connected component where the starting node resides if provided,
-        #Otherwise selected a node at ramdom and return the connected componets in which it resides.
+        #Otherwise select a node at random and return the connected component in which it resides.
         if not nx.is_connected(data.x):
             nodeComponent = start_node if start_node else numpy.random.choice(G.nodes())
             #Get the connected components
