@@ -22,6 +22,7 @@ from eabc.embeddings import SymbolicHistogram
 from eabc.extras.featureSelDE import FSsetup_DE,FSfitness_DE 
 from eabc.environments.nestedFS import eabc_Nested
 
+
 def IAMreader(parser,path):
     
     delimiters = "_", "."      
@@ -62,7 +63,8 @@ def main(dataTR,dataVS,dataTS,N_subgraphs,mu,lambda_,ngen,maxorder,cxpb,mutpb):
     classes= dataTR.unique_labels()
     #Initialize a dict of swarms - {key:label - value:deap popolution}
     population = {thisClass:toolbox.population(n=mu) for thisClass in classes}
-
+    IDagentsHistory = {thisClass:[ind.ID for ind in population[thisClass]] for thisClass in classes}
+    
     if DEBUG_FIXSUBGRAPH:
         subgraphsByclass = {thisClass:[] for thisClass in classes}
         
@@ -87,7 +89,7 @@ def main(dataTR,dataVS,dataTS,N_subgraphs,mu,lambda_,ngen,maxorder,cxpb,mutpb):
     #Log book
     LogAgents = {gen: {thisClass:[] for thisClass in classes} for gen in range(ngen+1)}
     LogPerf = {thisClass:[] for thisClass in classes}
-
+    
     # Begin the generational process   
     ClassAlphabets={thisClass:[] for thisClass in classes}
     for gen in range(1, ngen + 1):
@@ -98,15 +100,14 @@ def main(dataTR,dataVS,dataTS,N_subgraphs,mu,lambda_,ngen,maxorder,cxpb,mutpb):
                 
                 print("############")
                 #Generate the offspring: mutation OR crossover OR reproduce and individual as it is
-                offspring = varOr(population[swarmClass], toolbox, lambda_, cxpb, mutpb)
-        
+                #offspring = eabc_Nested.varOr(population[swarmClass], toolbox, lambda_, cxpb, mutpb)
+                offspring = toolbox.varOr(population=population[swarmClass],toolbox=toolbox,lambda_=lambda_, idHistory=IDagentsHistory[swarmClass])
                 #Selecting data for this swarm               
                 thisClassPatternIDs = np.where(np.asarray(dataTR.labels)==swarmClass)[0]
                 classAwareTR = dataTR[thisClassPatternIDs.tolist()]
                 
                 #Select both old and offspring for evaluation in order to run agents
                 pop = population[swarmClass] + offspring
-                invalid_ind = pop
                 #Select pop number of buckets to be assigned to agents
                 if DEBUG_FIXSUBGRAPH:
                     subgraphs = [subgraphsByclass[swarmClass] for _ in pop]
@@ -120,11 +121,11 @@ def main(dataTR,dataVS,dataTS,N_subgraphs,mu,lambda_,ngen,maxorder,cxpb,mutpb):
                 #E.g. idAgents       [ 0   0    1   1  1     2    -  3    .... ]
                 #     alphabets      [[s1 s2] [ s3  s4 s5]  [s6] []  [s7] .... ]
                 #Identify the agent that push s_i symbol
-                idAgents=[]
-                for i in range(len(pop)):
-                    if alphabets[i]:
-                        for _ in range(len(alphabets[i])):
-                            idAgents.append(i)
+                # idAgents=[]
+                # for i in range(len(pop)):
+                #     if alphabets[i]:
+                #         for _ in range(len(alphabets[i])):
+                #             idAgents.append(i)
                 
                 #Concatenate symbols if not empty
                 alphabets = sum(alphabets,[])
@@ -198,15 +199,21 @@ def main(dataTR,dataVS,dataTS,N_subgraphs,mu,lambda_,ngen,maxorder,cxpb,mutpb):
                 
                 print("Informedness with selected symbols: {}".format(J))
 
+                #Update class alphabet
+                ClassAlphabets[swarmClass]= np.asarray(thisGenClassAlphabet,dtype = object)[mask].tolist()
+
                 #Assign the final fitness to agents
                 fitnessesRewarded = list(fitnesses)
                 ##For log
                 rewardLog = []
                 ##
                 for agent in range(len(pop)):
-                    #NagentSymb = sum(np.asarray(idAgents)==agent)
-                    indices = np.where(np.asarray(idAgents)==agent)
-                    NagentSymbolsInModel= sum(mask[indices])
+                    
+                    agentID = pop[agent].ID
+                    NagentSymbolsInModel  = len([sym for sym in ClassAlphabets[swarmClass] if sym.owner==agentID])                        
+                        
+                    # indices = np.where(np.asarray(idAgents)==agent)
+                    # NagentSymbolsInModel= sum(mask[indices])
 
                     reward = J*NagentSymbolsInModel/sum(np.asarray(best_GA2)==1)
                     rewardLog.append(reward)
@@ -218,11 +225,7 @@ def main(dataTR,dataVS,dataTS,N_subgraphs,mu,lambda_,ngen,maxorder,cxpb,mutpb):
                         
                         fitnessesRewarded[agent] = 0.5*(fitnesses[agent][0]+reward), #Equal weight
                     
-                #Update class alphabet
-                ClassAlphabets[swarmClass]= np.asarray(thisGenClassAlphabet,dtype = object)[mask].tolist()
-
-                #invalid ind is a reference to pop
-                for ind, fit in zip(invalid_ind, tuple(fitnessesRewarded)):
+                for ind, fit in zip(pop, tuple(fitnessesRewarded)):
                     ind.fitness.values = fit
             
 
@@ -302,7 +305,8 @@ if __name__ == "__main__":
 
 
     seed = 64
-    random.seed(seed)    
+    random.seed(seed)
+    np.random.seed(seed)
     # Parameter setup
     # They should be setted by cmd line
     path = "/home/luca/Documenti/Progetti/E-ABC_v2/eabc_v2/Datasets/IAM/Letter3/"
@@ -319,19 +323,9 @@ if __name__ == "__main__":
     CXPROB = 0.33
     MUTPROB = 0.33
     INDCXP = 0.3
-    INDMUTP = 0.1
+    INDMUTP = 0.3
     TOURNSIZE = 5
     QMAX = 500
-
-    #Maximizing
-    creator.create("FitnessMax", base.Fitness, weights=(1.0,))
-    creator.create("Individual", list, fitness=creator.FitnessMax)
-    
-    toolbox = base.Toolbox()
-    
-    #Multiprocessing map
-    pool = multiprocessing.Pool()
-    toolbox.register("map", pool.map)
 
 
     ###Preprocessing
@@ -348,22 +342,9 @@ if __name__ == "__main__":
         
     
     IAMreadergraph = partial(IAMreader,parser)
-    rawtr = graph_nxDataset(path+"Training/", name, reader = IAMreadergraph)[:100]
-    rawvs = graph_nxDataset(path+"Validation/", name, reader = IAMreadergraph)[:100] 
-    rawts = graph_nxDataset(path+"Test/", name, reader = IAMreadergraph)[:100]
-
-    # #Removed not connected graph and null graph
-    # cleanDataTr,cleanDataVs,cleanDataTs=[],[],[]
-    # for dataset,cleanData in zip([rawtr,rawvs,rawts],[cleanDataTr,cleanDataVs,cleanDataTs]):
-    #     for g,idx,label in zip(dataset.data,dataset.indices,dataset.labels):
-    #         if not nx.is_empty(g):
-    #             if nx.is_connected(g):
-    #                 cleanData.append((g,idx,label)) 
-
-    # #Cleaning and normalizing and retrieving norm values
-    # cleanDataTr = np.asarray(cleanDataTr,dtype=object)
-    # cleanDataVs = np.asarray(cleanDataVs,dtype=object)
-    # cleanDataTs = np.asarray(cleanDataTs,dtype=object)    
+    rawtr = graph_nxDataset(path+"Training/", name, reader = IAMreadergraph)[:10]
+    rawvs = graph_nxDataset(path+"Validation/", name, reader = IAMreadergraph)[:10] 
+    rawts = graph_nxDataset(path+"Test/", name, reader = IAMreadergraph)[:10]
 
     ####
     if name == ('LetterH' or 'LetterM' or 'LetterL'):  
@@ -373,25 +354,11 @@ if __name__ == "__main__":
     elif name == 'AIDS':
         weights = AIDS.normalize(rawtr.data,rawvs.data,rawts.data)
     ###
-    # if name == ('LetterH' or 'LetterM' or 'LetterL'):  
-    #     weights = Letter.normalize('coords',cleanDataTr[:,0],cleanDataVs[:,0],cleanDataTs[:,0])
-    # elif name == 'GREC':
-    #     weights = GREC.normalize(cleanDataTr[:,0],cleanDataVs[:,0],cleanDataTs[:,0])
-    # elif name == 'AIDS':
-    #     weights = AIDS.normalize(cleanDataTr[:,0],cleanDataVs[:,0],cleanDataTs[:,0])
     
     #Slightly different from dataset used in pygralg
     dataTR = rawtr
     dataVS = rawvs
     dataTS = rawts
-    # dataTR = graph_nxDataset([cleanDataTr[:100,0],cleanDataTr[:100,2]],name, idx = cleanDataTr[:100,1])
-    # dataVS = graph_nxDataset([cleanDataVs[:100,0],cleanDataVs[:100,2]],name, idx = cleanDataVs[:100,1])    
-    # dataTS = graph_nxDataset([cleanDataTs[:100,0],cleanDataTs[:100,2]],name, idx = cleanDataTs[:100,1])    
-
-    # del rawtr
-    # del rawvs
-    # del rawts
-    
     
     #Create type for the problem
     if name == 'GREC':
@@ -401,23 +368,36 @@ if __name__ == "__main__":
     elif name == 'AIDS':
         Dissimilarity = AIDS.AIDSdiss
 
+
+    #Maximizing
+    creator.create("FitnessMax", base.Fitness, weights=(1.0,))
+    creator.create("Agent", list, fitness=creator.FitnessMax, ID = int)
+    
+    toolbox = base.Toolbox()
+    
+    #Multiprocessing map
+    # pool = multiprocessing.Pool()
+    # toolbox.register("map", pool.map)
+
     eabc_Nested = eabc_Nested(DissimilarityClass=Dissimilarity,problemName = name,DissNormFactors=weights)
     
     #Q scaling
     scale_factor = len(np.unique(dataTR.labels,dataVS.labels,dataTS.labels))
     scaledQ = round(QMAX/scale_factor)
     
-    toolbox.register("attr_genes", eabc_Nested.gene_bound,QMAX = scaledQ)
+    toolbox.register("attr_genes", eabc_Nested.gene_bound,QMAX = scaledQ) 
+    toolbox.register("agent", tools.initIterate,
+                    creator.Agent, toolbox.attr_genes)
     
-    toolbox.register("individual", tools.initIterate,
-                    creator.Individual, toolbox.attr_genes)
-    toolbox.register("population", tools.initRepeat, list, toolbox.individual,n=100)  
+    
+    toolbox.register("population", eabc_Nested.initAgents, toolbox.agent,n=100)  
     toolbox.register("evaluate", eabc_Nested.fitness)
     toolbox.register("mate", eabc_Nested.customXover,indpb=INDCXP)
     #Setup mutation
     toolbox.register("mutate", eabc_Nested.customMutation,mu = 0, indpb=INDMUTP)
     toolbox.register("select", tools.selTournament, tournsize=TOURNSIZE)
-
+    toolbox.register("varOr",eabc_Nested.varOr,cxpb= CXPROB, mutpb=MUTPROB)
+    
     #Decorator bound    
     toolbox.decorate("mate", eabc_Nested.checkBounds(scaledQ))
     toolbox.decorate("mutate", eabc_Nested.checkBounds(scaledQ))
