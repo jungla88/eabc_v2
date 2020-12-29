@@ -313,12 +313,18 @@ class eabc_Nested:
                 ind1, ind2 = toolbox.mate(ind1, ind2)
                 del ind1.fitness.values
                 offspring.append(ind1)
+                ## New ID for recombined ind
                 ind1.ID = max(idHistory)+1
                 idHistory.append(ind1.ID)
+                ##
             elif op_choice < cxpb + mutpb:  # Apply mutation
                 ind = toolbox.clone(random.choice(population))
                 ind, = toolbox.mutate(ind)
                 del ind.fitness.values
+                ## New ID for mutated ind
+                ind.ID = max(idHistory)+1
+                idHistory.append(ind.ID)
+                ###   
                 offspring.append(ind)
             else:                           # Apply reproduction
                 offspring.append(random.choice(population))

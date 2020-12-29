@@ -80,11 +80,11 @@ def main(dataTR,dataVS,dataTS,N_subgraphs,mu,lambda_,ngen,maxorder,cxpb,mutpb):
             subgraphs = [subgraph_extr.randomExtractDataset(classAwareTR, N_subgraphs) for _ in population[swarmClass]]
         ##
 
-        invalid_ind = [ind for ind in population[swarmClass] if not ind.fitness.valid]
-        fitnesses,symbols = zip(*toolbox.map(toolbox.evaluate, zip(invalid_ind,subgraphs)))
+#        invalid_ind = [ind for ind in population[swarmClass] if not ind.fitness.valid]
+#        fitnesses,symbols = zip(*toolbox.map(toolbox.evaluate, zip(invalid_ind,subgraphs)))
 
-        for ind, fit in zip(invalid_ind, fitnesses):
-            ind.fitness.values = fit
+        # for ind, fit in zip(invalid_ind, fitnesses):
+        #     ind.fitness.values = fit
 
     #Log book
     LogAgents = {gen: {thisClass:[] for thisClass in classes} for gen in range(ngen+1)}
@@ -207,6 +207,8 @@ def main(dataTR,dataVS,dataTS,N_subgraphs,mu,lambda_,ngen,maxorder,cxpb,mutpb):
                 ##For log
                 rewardLog = []
                 ##
+                
+                    
                 for agent in range(len(pop)):
                     
                     agentID = pop[agent].ID
@@ -220,7 +222,7 @@ def main(dataTR,dataVS,dataTS,N_subgraphs,mu,lambda_,ngen,maxorder,cxpb,mutpb):
                     
                     if DEBUG_FITNESS:
                         
-                        fitnessesRewarded[agent] = reward
+                        fitnessesRewarded[agent] = reward,
                     else:
                         
                         fitnessesRewarded[agent] = 0.5*(fitnesses[agent][0]+reward), #Equal weight
@@ -316,15 +318,15 @@ if __name__ == "__main__":
     # path = "/home/luca/Documenti/Progetti/E-ABC_v2/eabc_v2/Datasets/IAM/AIDS/"
     # name = "AIDS" 
     N_subgraphs = 20
-    ngen = 1
+    ngen = 20
     mu = 20
     lambda_=20
     maxorder = 5
-    CXPROB = 0.33
-    MUTPROB = 0.33
+    CXPROB = 0.45
+    MUTPROB = 0.45
     INDCXP = 0.3
     INDMUTP = 0.3
-    TOURNSIZE = 5
+    TOURNSIZE = 3
     QMAX = 500
 
 
@@ -342,9 +344,9 @@ if __name__ == "__main__":
         
     
     IAMreadergraph = partial(IAMreader,parser)
-    rawtr = graph_nxDataset(path+"Training/", name, reader = IAMreadergraph)[:10]
-    rawvs = graph_nxDataset(path+"Validation/", name, reader = IAMreadergraph)[:10] 
-    rawts = graph_nxDataset(path+"Test/", name, reader = IAMreadergraph)[:10]
+    rawtr = graph_nxDataset(path+"Training/", name, reader = IAMreadergraph)
+    rawvs = graph_nxDataset(path+"Validation/", name, reader = IAMreadergraph)
+    rawts = graph_nxDataset(path+"Test/", name, reader = IAMreadergraph)
 
     ####
     if name == ('LetterH' or 'LetterM' or 'LetterL'):  
@@ -371,18 +373,18 @@ if __name__ == "__main__":
 
     #Maximizing
     creator.create("FitnessMax", base.Fitness, weights=(1.0,))
-    creator.create("Agent", list, fitness=creator.FitnessMax, ID = int)
+    creator.create("Agent", list, fitness=creator.FitnessMax, ID = None)
     
     toolbox = base.Toolbox()
     
     #Multiprocessing map
-    # pool = multiprocessing.Pool()
-    # toolbox.register("map", pool.map)
+    pool = multiprocessing.Pool()
+    toolbox.register("map", pool.map)
 
     eabc_Nested = eabc_Nested(DissimilarityClass=Dissimilarity,problemName = name,DissNormFactors=weights)
     
     #Q scaling
-    scale_factor = len(np.unique(dataTR.labels,dataVS.labels,dataTS.labels))
+    scale_factor = len(np.unique(dataTR.labels,dataVS.labels,dataTS.labels)[0])
     scaledQ = round(QMAX/scale_factor)
     
     toolbox.register("attr_genes", eabc_Nested.gene_bound,QMAX = scaledQ) 
