@@ -45,7 +45,7 @@ class Granulator:
           
     #        
     def _evaluateF(self, normComp, normCard):
-        #*0.1 normCard
+        #*0.1 normCard manually scale card for being comparable with comp
         if 0<=normComp<=1 and 0<normCard<=1:
              F = self._Fweight*normCard*0.1 + (1-self._Fweight)*normComp
         else:
