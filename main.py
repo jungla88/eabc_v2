@@ -7,7 +7,7 @@ import pickle
 import networkx as nx
 import multiprocessing
 from functools import partial
-
+import copy
 
 from sklearn.neighbors import KNeighborsClassifier as KNN
 from sklearn.metrics import confusion_matrix
@@ -54,12 +54,15 @@ def main(dataTR,dataVS,dataTS,N_subgraphs,mu,lambda_,ngen,maxorder,cxpb,mutpb):
     ##################
     # Evaluate the individuals with an invalid fitness
     DEBUG_FIXSUBGRAPH = False
-    DEBUG_FITNESS = True
+    DEBUG_FITNESS = False
+    DEBUG_INDOCC = True
     print("Initializing populations...")
     if DEBUG_FIXSUBGRAPH:
         print("DEBUG SUBGRAPH STOCHASTIC TRUE")
     if DEBUG_FITNESS:
         print("DEBUG FITNESS TRUE")
+    if DEBUG_INDOCC:
+        print("DEBUG REPEATED IND TRUE")        
     classes= dataTR.unique_labels()
     #Initialize a dict of swarms - {key:label - value:deap popolution}
     population = {thisClass:toolbox.population(n=mu) for thisClass in classes}
@@ -102,6 +105,7 @@ def main(dataTR,dataVS,dataTS,N_subgraphs,mu,lambda_,ngen,maxorder,cxpb,mutpb):
                 #Generate the offspring: mutation OR crossover OR reproduce and individual as it is
                 #offspring = eabc_Nested.varOr(population[swarmClass], toolbox, lambda_, cxpb, mutpb)
                 offspring = toolbox.varOr(population=population[swarmClass],toolbox=toolbox,lambda_=lambda_, idHistory=IDagentsHistory[swarmClass])
+                
                 #Selecting data for this swarm               
                 thisClassPatternIDs = np.where(np.asarray(dataTR.labels)==swarmClass)[0]
                 classAwareTR = dataTR[thisClassPatternIDs.tolist()]
@@ -113,10 +117,10 @@ def main(dataTR,dataVS,dataTS,N_subgraphs,mu,lambda_,ngen,maxorder,cxpb,mutpb):
                     subgraphs = [subgraphsByclass[swarmClass] for _ in pop]
                 else:
                     subgraphs = [subgraph_extr.randomExtractDataset(classAwareTR, N_subgraphs) for _ in pop]
-
+                
                 #Run individual and return the partial fitness comp+card
                 fitnesses,alphabets = zip(*toolbox.map(toolbox.evaluate, zip(pop,subgraphs)))
-
+                
                 #Generate IDs for agents that pushed symbols in class bucket
                 #E.g. idAgents       [ 0   0    1   1  1     2    -  3    .... ]
                 #     alphabets      [[s1 s2] [ s3  s4 s5]  [s6] []  [s7] .... ]
@@ -207,35 +211,55 @@ def main(dataTR,dataVS,dataTS,N_subgraphs,mu,lambda_,ngen,maxorder,cxpb,mutpb):
                 ##For log
                 rewardLog = []
                 ##
-                
-                    
                 for agent in range(len(pop)):
                     
                     agentID = pop[agent].ID
-                    NagentSymbolsInModel  = len([sym for sym in ClassAlphabets[swarmClass] if sym.owner==agentID])                        
-                        
-                    # indices = np.where(np.asarray(idAgents)==agent)
-                    # NagentSymbolsInModel= sum(mask[indices])
+                    NagentSymbolsInModel  = len([sym for sym in ClassAlphabets[swarmClass] if sym.owner==agentID])
 
                     reward = J*NagentSymbolsInModel/sum(np.asarray(best_GA2)==1)
                     rewardLog.append(reward)
                     
                     if DEBUG_FITNESS:
-                        
                         fitnessesRewarded[agent] = reward,
                     else:
                         
                         fitnessesRewarded[agent] = 0.5*(fitnesses[agent][0]+reward), #Equal weight
-                    
-                for ind, fit in zip(pop, tuple(fitnessesRewarded)):
+                        #fitnessesRewarded[agent]=fitnesses[agent][0],
+                
+                if DEBUG_INDOCC:
+                    fitmean = []
+                for ind, fit in zip(pop, fitnessesRewarded):
+                    if DEBUG_INDOCC:
+                        ids = np.asarray([thisInd.ID for thisInd in pop])
+                        fitness = np.asarray(fitnessesRewarded)
+                        indices = np.where(ids == ind.ID)
+                        fit = np.mean(fitness[indices]),
                     ind.fitness.values = fit
-            
-
+                    if DEBUG_INDOCC:
+                        fitmean.append(fit)
+                ##           
+                # x = np.asarray([ind.fitness.values[0] for ind in pop])
+                # y = np.asarray([fit[0] for fit in fitmean])
+                # if not np.all(x == y):
+                #     pause = input("Stop Error")
+                #     print("in pop")
+                #     print(np.asarray([ind.fitness.values[0] for ind in pop]))
+                #     pause = input()
+                #     print("fitness list ")
+                #     print(np.asarray([fit[0] for fit in fitmean]))
+                #     #print(np.asarray([fit[0] for fit in fitnesses]))                    
+                #     pause = input()
+                #     print(np.where(x!=y))
+                #     pause = input()
+                #     for ind in pop:
+                #         print(ind.ID,ind.fitness.valid)
+                ##
+                
                 # Select the next generation population for the current swarm
                 population[swarmClass][:] = toolbox.select(pop, mu)
-                
                 #Save Informedness for class and gen
                 LogPerf[swarmClass].append([J,sum(np.asarray(best_GA2)==1),len(best_GA2)])
+                
                 #Save population at g = gen
                 LogAgents[gen][swarmClass].append([pop,fitnesses,rewardLog,fitnessesRewarded])
             
@@ -318,9 +342,9 @@ if __name__ == "__main__":
     # path = "/home/luca/Documenti/Progetti/E-ABC_v2/eabc_v2/Datasets/IAM/AIDS/"
     # name = "AIDS" 
     N_subgraphs = 20
-    ngen = 20
-    mu = 20
-    lambda_=20
+    ngen = 10
+    mu = 10
+    lambda_= 50
     maxorder = 5
     CXPROB = 0.45
     MUTPROB = 0.45
@@ -344,9 +368,9 @@ if __name__ == "__main__":
         
     
     IAMreadergraph = partial(IAMreader,parser)
-    rawtr = graph_nxDataset(path+"Training/", name, reader = IAMreadergraph)
-    rawvs = graph_nxDataset(path+"Validation/", name, reader = IAMreadergraph)
-    rawts = graph_nxDataset(path+"Test/", name, reader = IAMreadergraph)
+    rawtr = graph_nxDataset(path+"Training/", name, reader = IAMreadergraph)[:50]
+    rawvs = graph_nxDataset(path+"Validation/", name, reader = IAMreadergraph)[:50]
+    rawts = graph_nxDataset(path+"Test/", name, reader = IAMreadergraph)[:50]
 
     ####
     if name == ('LetterH' or 'LetterM' or 'LetterL'):  
@@ -378,8 +402,8 @@ if __name__ == "__main__":
     toolbox = base.Toolbox()
     
     #Multiprocessing map
-    pool = multiprocessing.Pool()
-    toolbox.register("map", pool.map)
+    # pool = multiprocessing.Pool()
+    # toolbox.register("map", pool.map)
 
     eabc_Nested = eabc_Nested(DissimilarityClass=Dissimilarity,problemName = name,DissNormFactors=weights)
     
