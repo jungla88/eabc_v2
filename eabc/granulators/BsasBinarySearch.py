@@ -69,10 +69,16 @@ class BsasBinarySearch(Granulator):
         #         newGr = Granule(repres._representativeElem,self._distanceFunction,F,normalizeCard[i],normalizeComp[i])
         #         super(BsasBinarySearch,self)._addSymbol(newGr)
         
-        # singleton or universe clusters       
-        clustersLabels,reprElems = zip(*filter(lambda x: not(len(x[0])==1 or
+        # singleton or universe clusters 
+        
+        try:
+            clustersLabels,reprElems = zip(*filter(lambda x: not(len(x[0])==1 or
                                                len(x[0])/len(Dataset.data)==1), zip(clustersLabels,reprElems))) 
-       
+        #No elements to unpack
+        except ValueError:
+            clustersLabels = []
+            reprElems = []
+            
         nClust = len(reprElems)
         #Evaluation - Lower is better
         normalizeCard = [1-(len(clustersLabels[l])/len(Dataset.data)) for l in range(nClust)]
