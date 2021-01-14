@@ -8,6 +8,7 @@ import networkx as nx
 import multiprocessing
 from functools import partial
 import copy
+import itertools
 
 from sklearn.neighbors import KNeighborsClassifier as KNN
 from sklearn.metrics import confusion_matrix
@@ -54,7 +55,7 @@ def main(dataTR,dataVS,dataTS,N_subgraphs,mu,lambda_,ngen,maxorder,cxpb,mutpb):
     ##################
     # Evaluate the individuals with an invalid fitness
     DEBUG_FIXSUBGRAPH = False
-    DEBUG_FITNESS = False
+    DEBUG_FITNESS = True
     DEBUG_INDOCC = True
     print("Initializing populations...")
     if DEBUG_FIXSUBGRAPH:
@@ -113,24 +114,21 @@ def main(dataTR,dataVS,dataTS,N_subgraphs,mu,lambda_,ngen,maxorder,cxpb,mutpb):
                 #Select both old and offspring for evaluation in order to run agents
                 pop = population[swarmClass] + offspring
                 #Select pop number of buckets to be assigned to agents
-                if DEBUG_FIXSUBGRAPH:
-                    subgraphs = [subgraphsByclass[swarmClass] for _ in pop]
-                else:
-                    subgraphs = [subgraph_extr.randomExtractDataset(classAwareTR, N_subgraphs) for _ in pop]
+
+                subgraphs = [subgraph_extr.randomExtractDataset(classAwareTR, N_subgraphs) for _ in pop]
                 
                 #Run individual and return the partial fitness comp+card
                 fitnesses,alphabets = zip(*toolbox.map(toolbox.evaluate, zip(pop,subgraphs)))
-                
-                #Generate IDs for agents that pushed symbols in class bucket
-                #E.g. idAgents       [ 0   0    1   1  1     2    -  3    .... ]
-                #     alphabets      [[s1 s2] [ s3  s4 s5]  [s6] []  [s7] .... ]
-                #Identify the agent that push s_i symbol
-                # idAgents=[]
-                # for i in range(len(pop)):
-                #     if alphabets[i]:
-                #         for _ in range(len(alphabets[i])):
-                #             idAgents.append(i)
-                
+
+                #Store agent number of symbols and fix replicated individuals alphabet size issue
+                ids = np.asarray([ind.ID for ind in pop])                
+                uniqueIds, indices, count = np.unique(ids,return_inverse=True,return_counts=True)
+                for i in range(len(uniqueIds)):
+                    values = [len(alphabets[j]) for j in np.where(indices==i)[0]]
+                    for j in np.where(indices==i)[0]:
+                        pop[j].alphabetSize = max(values)
+    
+                    
                 #Concatenate symbols if not empty
                 alphabets = sum(alphabets,[])
                 
@@ -168,8 +166,7 @@ def main(dataTR,dataVS,dataTS,N_subgraphs,mu,lambda_,ngen,maxorder,cxpb,mutpb):
                 sensitivity = tp / (tp + fn)
                 specificity = tn / (tn + fp)
                 J = sensitivity + specificity - 1
-                J = (J + 1) / 2
-                #error_rate = 1 - J          
+                J = (J + 1) / 2       
                 print("Informedness {} - class {} - alphabet = {}".format(J, swarmClass,len(thisGenClassAlphabet)))
                 
                 #Feature Selection                  
@@ -214,9 +211,21 @@ def main(dataTR,dataVS,dataTS,N_subgraphs,mu,lambda_,ngen,maxorder,cxpb,mutpb):
                 for agent in range(len(pop)):
                     
                     agentID = pop[agent].ID
+                    #Count ownership in full alphabet
+                    NagentSymbolsPrev = len(list(filter(lambda sym: sym.owner==agentID,thisGenClassAlphabet)))                                         
+                    #Count ownership in shrinked alphabet
                     NagentSymbolsInModel  = len([sym for sym in ClassAlphabets[swarmClass] if sym.owner==agentID])
 
-                    reward = J*NagentSymbolsInModel/sum(np.asarray(best_GA2)==1)
+                    if DEBUG_FITNESS:
+
+                        alpha = 0.9
+                        alphCard = pop[agent].alphabetSize
+                        
+                        reward = alpha*J*NagentSymbolsInModel/NagentSymbolsPrev + (1-alpha)*(1-(alphCard/N_subgraphs)) if alphCard>0 else 0
+                        if reward>1:
+                            print("error")
+                    else:
+                        reward = J*NagentSymbolsInModel/sum(np.asarray(best_GA2)==1)
                     rewardLog.append(reward)
                     
                     if DEBUG_FITNESS:
@@ -224,7 +233,7 @@ def main(dataTR,dataVS,dataTS,N_subgraphs,mu,lambda_,ngen,maxorder,cxpb,mutpb):
                     else:
                         
                         fitnessesRewarded[agent] = 0.5*(fitnesses[agent][0]+reward), #Equal weight
-                        #fitnessesRewarded[agent]=fitnesses[agent][0],
+                
                 
                 if DEBUG_INDOCC:
                     fitmean = []
@@ -237,6 +246,8 @@ def main(dataTR,dataVS,dataTS,N_subgraphs,mu,lambda_,ngen,maxorder,cxpb,mutpb):
                     ind.fitness.values = fit
                     if DEBUG_INDOCC:
                         fitmean.append(fit)
+                
+                print([[ind.ID,ind.fitness.values] for ind in pop])
                 ##           
                 # x = np.asarray([ind.fitness.values[0] for ind in pop])
                 # y = np.asarray([fit[0] for fit in fitmean])
@@ -335,13 +346,13 @@ if __name__ == "__main__":
     np.random.seed(seed)
     # Parameter setup
     # They should be setted by cmd line
-    path = "/home/luca/Documenti/Progetti/E-ABC_v2/eabc_v2/Datasets/IAM/Letter3/"
-    name = "LetterH"
-    # path = "/home/luca/Documenti/Progetti/E-ABC_v2/eabc_v2/Datasets/IAM/GREC/"
-    # name = "GREC"  
+    # path = "/home/luca/Documenti/Progetti/E-ABC_v2/eabc_v2/Datasets/IAM/Letter3/"
+    # name = "LetterH"
+    path = "/home/luca/Documenti/Progetti/E-ABC_v2/eabc_v2/Datasets/IAM/GREC/"
+    name = "GREC"  
     # path = "/home/luca/Documenti/Progetti/E-ABC_v2/eabc_v2/Datasets/IAM/AIDS/"
     # name = "AIDS" 
-    N_subgraphs = 20
+    N_subgraphs = 100
     ngen = 10
     mu = 10
     lambda_= 50
@@ -357,7 +368,7 @@ if __name__ == "__main__":
     ###Preprocessing
     print("Loading...")    
     
-    if name == ('LetterH' or 'LetterM' or 'LetterL'):
+    if name in ['LetterH', 'LetterM','LetterL']:
         parser = Letter.parser
     elif name == 'GREC':
         parser = GREC.parser
@@ -368,12 +379,12 @@ if __name__ == "__main__":
         
     
     IAMreadergraph = partial(IAMreader,parser)
-    rawtr = graph_nxDataset(path+"Training/", name, reader = IAMreadergraph)[:50]
-    rawvs = graph_nxDataset(path+"Validation/", name, reader = IAMreadergraph)[:50]
-    rawts = graph_nxDataset(path+"Test/", name, reader = IAMreadergraph)[:50]
+    rawtr = graph_nxDataset(path+"Training/", name, reader = IAMreadergraph)[:100]
+    rawvs = graph_nxDataset(path+"Validation/", name, reader = IAMreadergraph)[:100]
+    rawts = graph_nxDataset(path+"Test/", name, reader = IAMreadergraph)[:100]
 
     ####
-    if name == ('LetterH' or 'LetterM' or 'LetterL'):  
+    if name in ['LetterH', 'LetterM' ,'LetterL']:  
         weights = Letter.normalize('coords',rawtr.data,rawvs.data,rawts.data)
     elif name == 'GREC':
         weights = GREC.normalize(rawtr.data,rawvs.data,rawts.data)
@@ -389,7 +400,7 @@ if __name__ == "__main__":
     #Create type for the problem
     if name == 'GREC':
         Dissimilarity = GREC.GRECdiss
-    elif name == ('LetterH' or 'LetterM' or 'LetterL'):
+    elif name in ['LetterH' , 'LetterM' , 'LetterL']:
         Dissimilarity = Letter.LETTERdiss
     elif name == 'AIDS':
         Dissimilarity = AIDS.AIDSdiss
@@ -397,7 +408,7 @@ if __name__ == "__main__":
 
     #Maximizing
     creator.create("FitnessMax", base.Fitness, weights=(1.0,))
-    creator.create("Agent", list, fitness=creator.FitnessMax, ID = None)
+    creator.create("Agent", list, fitness=creator.FitnessMax, ID = None, alphabetSize = None)
     
     toolbox = base.Toolbox()
     
