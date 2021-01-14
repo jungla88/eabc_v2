@@ -70,4 +70,7 @@ def normalize(*argv):
 
     # Eval normalization factor
     aidsw = numpy.sqrt((MAX_SetX - MIN_SetX)**2 + (MAX_SetY - MIN_SetY)**2)
+    
+    print("AIDS - Norm factor: {}".format(aidsw))
+    
     return [aidsw,0]

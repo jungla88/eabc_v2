@@ -36,7 +36,7 @@ def normalize(strAttribute,*argv):
     The input sets will be modified in-place.
     """
 
-    # Find max value in training set by stacking [x, y] pairs, then flattening and then taking the max
+    # Find max value in training set by stacking [x, y] pairs, then flattening and taking the max
     
 
     MAXval = []    
@@ -59,5 +59,7 @@ def normalize(strAttribute,*argv):
         for g in targetSet:
             for n in g.nodes():
                 g.nodes[n][strAttribute] = g.nodes[n][strAttribute]/MAX
+                
+    print("Letter Normalization value = {}".format(MAX))
                 
     return [None,None]

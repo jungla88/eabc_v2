@@ -195,5 +195,7 @@ def normalize(*argv):
 
     vertexW = numpy.sqrt((MAXx - MINx)**2 + (MAXy - MINy)**2)
     edgeW = numpy.abs(MAXa - MINa)
+    
+    print("GREC - Vertex weights:{}, Edge weights: {}".format(vertexW,edgeW))
 
     return [vertexW, edgeW]
