@@ -46,14 +46,31 @@ class Granulator:
     #        
     def _evaluateF(self, normComp, normCard):
         #*0.1 normCard manually scale card for being comparable with comp
-        if 0<=normComp<=1 and 0<normCard<=1:
-             F = self._Fweight*normCard*0.1 + (1-self._Fweight)*normComp
-        else:
-             raise ValueError
+        # if 0<=normComp<=1 and 0<normCard<=1:
+        #      #F = self._Fweight*normCard*0.1 + (1-self._Fweight)*normComp
+        #      F = self._Fweight*normCard + (1-self._Fweight)*normComp
+        # else:
+        #      raise ValueError
+        # return F
+        
+        #TEST: testing normalization for aggregate of clusters where card=0 and comp=0 are feasible
+        F = self._Fweight*normCard + (1-self._Fweight)*normComp
+ 
         return F
+
         #     print("Warning, Invalid values for F evaluation: cardinality =  {}, compactness = {}"
         #           .format(self._Cardinality,self._Compactness))
         #     F = float('nan')        
         # return F
         
+    def _removeSingularity(self,clustersLabels,reprElems,Dataset):
         
+        try:
+            clustersLabels,reprElems = zip(*filter(lambda x: not(len(x[0])==1 or
+                                               len(x[0])/len(Dataset.data)==1 or x[1]._SOD==0), zip(clustersLabels,reprElems))) 
+        #No elements to unpack, all clusters are discarded
+        except ValueError:
+            clustersLabels = []
+            reprElems = []
+            
+        return clustersLabels,reprElems

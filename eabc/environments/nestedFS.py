@@ -348,6 +348,10 @@ class eabc_Nested:
                 ###   
                 offspring.append(ind)
             else:                           # Apply reproduction
-                offspring.append(random.choice(population))
-    
+                #offspring.append(random.choice(population))
+                randomSpawned = toolbox.agent()
+                randomSpawned.ID = max(idHistory)+1
+                idHistory.append(randomSpawned.ID)
+                offspring.append(randomSpawned)
+                
         return offspring

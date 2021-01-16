@@ -73,7 +73,7 @@ class Medoid(Representative):
             M[id_p,:] = v
             M[:,id_p] = v
                 
-        SoD = np.sum(M, axis = 0)    
+        SoD = np.sum(M, axis = 0)
 
         self._minSodIdx = np.argmin(SoD)        
         self._representativeElem = self._cluster[self._minSodIdx]

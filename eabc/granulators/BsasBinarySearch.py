@@ -11,7 +11,8 @@ import numpy as np
 
 class BsasBinarySearch(Granulator):
     
-    def __init__(self,DistanceFunction,clusterRepresentative,tStep=0.1,Qmax=100):
+    #TEST: Trying normalization of F value fo min-max approach
+    def __init__(self,DistanceFunction,clusterRepresentative,tStep=0.1,Qmax=100,isScaledF=True):
         
         self._distanceFunction = DistanceFunction
         self._representation = clusterRepresentative #An object for evaluate the representative
@@ -21,6 +22,9 @@ class BsasBinarySearch(Granulator):
         self._method=BSAS(self._representation,self._distanceFunction, Q= self._Qmax)
         self._tStep = tStep
  
+        #TEST: min-max F scaling
+        self._isScaledF = isScaledF   
+     
         super().__init__()
         
     @property
@@ -69,23 +73,33 @@ class BsasBinarySearch(Granulator):
         #         newGr = Granule(repres._representativeElem,self._distanceFunction,F,normalizeCard[i],normalizeComp[i])
         #         super(BsasBinarySearch,self)._addSymbol(newGr)
         
-        # singleton or universe clusters 
+        # singleton or universe clusters
+        #TODO: push in superclass         
+        # try:
+        #     clustersLabels,reprElems = zip(*filter(lambda x: not(len(x[0])==1 or
+        #                                        len(x[0])/len(Dataset.data)==1), zip(clustersLabels,reprElems))) 
+        # #No elements to unpack, all clusters are discarded
+        # except ValueError:
+        #     clustersLabels = []
+        #     reprElems = []
         
-        try:
-            clustersLabels,reprElems = zip(*filter(lambda x: not(len(x[0])==1 or
-                                               len(x[0])/len(Dataset.data)==1), zip(clustersLabels,reprElems))) 
-        #No elements to unpack
-        except ValueError:
-            clustersLabels = []
-            reprElems = []
+        clustersLabels,reprElems = super(BsasBinarySearch,self)._removeSingularity(clustersLabels,reprElems,Dataset)
             
         nClust = len(reprElems)
         #Evaluation - Lower is better
         normalizeCard = [1-(len(clustersLabels[l])/len(Dataset.data)) for l in range(nClust)]
         normalizeComp = [reprElems[l]._SOD/(len(clustersLabels[l])-1) for l in range(nClust)]
-        
+
+        if reprElems:
+            rangeComp = max(normalizeComp)-min(normalizeComp)
+            rangeCard = max(normalizeCard)-min(normalizeCard)
+            
         for i,repres in enumerate(reprElems):
+            
+            if self._isScaledF:
+                normalizeComp[i] = (normalizeComp[i] - min(normalizeComp))/rangeComp if rangeComp!=0 else 0
+                normalizeCard[i] = (normalizeCard[i] - min(normalizeCard))/rangeCard if rangeCard!=0 else 0
+            
             F = super(BsasBinarySearch,self)._evaluateF(normalizeComp[i],normalizeCard[i])
             newGr = Granule(repres._representativeElem,self._distanceFunction,F,normalizeCard[i],normalizeComp[i])
             super(BsasBinarySearch,self)._addSymbol(newGr)
-    
