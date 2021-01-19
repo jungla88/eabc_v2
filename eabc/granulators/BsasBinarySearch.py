@@ -74,14 +74,6 @@ class BsasBinarySearch(Granulator):
         #         super(BsasBinarySearch,self)._addSymbol(newGr)
         
         # singleton or universe clusters
-        #TODO: push in superclass         
-        # try:
-        #     clustersLabels,reprElems = zip(*filter(lambda x: not(len(x[0])==1 or
-        #                                        len(x[0])/len(Dataset.data)==1), zip(clustersLabels,reprElems))) 
-        # #No elements to unpack, all clusters are discarded
-        # except ValueError:
-        #     clustersLabels = []
-        #     reprElems = []
         
         clustersLabels,reprElems = super(BsasBinarySearch,self)._removeSingularity(clustersLabels,reprElems,Dataset)
             
@@ -90,16 +82,29 @@ class BsasBinarySearch(Granulator):
         normalizeCard = [1-(len(clustersLabels[l])/len(Dataset.data)) for l in range(nClust)]
         normalizeComp = [reprElems[l]._SOD/(len(clustersLabels[l])-1) for l in range(nClust)]
 
+        ##
+        compMin = min(normalizeComp+[self.compMin])
+        compMax = max(normalizeComp+[self.compMax])
+        cardMin = min(normalizeCard+[self.cardMin])
+        cardMax = max(normalizeCard+[self.cardMax])
+        ##
+        
         if reprElems:
-            rangeComp = max(normalizeComp)-min(normalizeComp)
-            rangeCard = max(normalizeCard)-min(normalizeCard)
-            
+            rangeComp = compMax-compMin
+            rangeCard = cardMax-cardMin
+        
+
         for i,repres in enumerate(reprElems):
             
             if self._isScaledF:
-                normalizeComp[i] = (normalizeComp[i] - min(normalizeComp))/rangeComp if rangeComp!=0 else 0
-                normalizeCard[i] = (normalizeCard[i] - min(normalizeCard))/rangeCard if rangeCard!=0 else 0
+                normalizeComp[i] = (normalizeComp[i] - compMin)/rangeComp if rangeComp!=0 else 0
+                normalizeCard[i] = (normalizeCard[i] - cardMin)/rangeCard if rangeCard!=0 else 0
             
             F = super(BsasBinarySearch,self)._evaluateF(normalizeComp[i],normalizeCard[i])
             newGr = Granule(repres._representativeElem,self._distanceFunction,F,normalizeCard[i],normalizeComp[i])
             super(BsasBinarySearch,self)._addSymbol(newGr)
+            
+            self.compMin = compMin
+            self.compMax = compMax
+            self.cardMin = cardMin
+            self.cardMax = cardMax

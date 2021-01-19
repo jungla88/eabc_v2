@@ -59,8 +59,8 @@ class eabc_Nested:
         #Tau
         g_tau1,g_tau2 = tools.cxUniform([ind1[7]], [ind2[7]], indpb = indpb)
         #Test weight comp card
-        g_eta1,g_eta2 = tools.cxUniform([ind1[8]], [ind2[8]], indpb = indpb)
-        
+        #g_eta1,g_eta2 = tools.cxUniform([ind1[8]], [ind2[8]], indpb = indpb)
+        ####################
     
         #Set if crossovered
         ind1[0]=g_q1[0]
@@ -76,17 +76,22 @@ class eabc_Nested:
         ind1[7]=g_tau1[0]
         ind2[7]=g_tau2[0]
         #Test weight comp card
-        ind1[8]=g_eta1[0]
-        ind2[8]=g_eta2[0]        
+        # ind1[8]=g_eta1[0]
+        # ind2[8]=g_eta2[0]
+        #############à
     
         if self._problemName == 'GREC':
-            
-#            g_add1, g_add2 =  tools.cxTwoPoint(ind1[8:13], ind2[8:13])
-            g_add1, g_add2 =  tools.cxTwoPoint(ind1[9:14], ind2[9:14])
+
+            g_add1, g_add2 =  tools.cxTwoPoint(ind1[8:13], ind2[8:13])
+            #Weight eta
+            #g_add1, g_add2 =  tools.cxTwoPoint(ind1[9:14], ind2[9:14])
+            ################
             #Same for ged attributes
             if random.random()<indpb:
-#                for i,(g1,g2) in enumerate(zip(g_add1,g_add2),start = 8):
-                for i,(g1,g2) in enumerate(zip(g_add1,g_add2),start = 9):
+                for i,(g1,g2) in enumerate(zip(g_add1,g_add2),start = 8):
+                #Weight eta
+                #for i,(g1,g2) in enumerate(zip(g_add1,g_add2),start = 9):
+                ###########
                     ind1[i]=g1
                     ind2[i]=g2
             
@@ -138,7 +143,7 @@ class eabc_Nested:
 
         """
         
-        individual,granulationBucket = args
+        individual,granulationBucket,minComp,maxComp,minCard,maxCard = args
         Q= individual[0]
         wNSub= individual[1]
         wNIns= individual[2]
@@ -148,22 +153,24 @@ class eabc_Nested:
         wEDel= individual[6]
         tau = individual[7]
         #Test eta
-        eta = individual[8]
+        #eta = individual[8]
 
         if self._problemName == 'GREC':
                     
-            # vParam1=individual[8]
-            # eParam1=individual[9]
-            # eParam2=individual[10]
-            # eParam3=individual[11]
-            # eParam4=individual[12]
-
-            vParam1=individual[9]
-            eParam1=individual[10]
-            eParam2=individual[11]
-            eParam3=individual[12]
-            eParam4=individual[13]
-
+            vParam1=individual[8]
+            eParam1=individual[9]
+            eParam2=individual[10]
+            eParam3=individual[11]
+            eParam4=individual[12]
+            
+            
+            ##ETA
+            # vParam1=individual[9]
+            # eParam1=individual[10]
+            # eParam2=individual[11]
+            # eParam3=individual[12]
+            # eParam4=individual[13]
+            #####
             diss = self._dissimilarityClass(vertexWeight= self._VertexDissWeight,edgeWeight = self._EdgeDissWeight)
         
             diss.v1 = vParam1
@@ -190,7 +197,16 @@ class eabc_Nested:
         granulationStrategy = BsasBinarySearch(graphDist,Repr,0.1)
         granulationStrategy.BsasQmax = Q
         granulationStrategy.symbol_thr = tau
-        granulationStrategy.eta = eta
+        ####ETA
+        #granulationStrategy.eta = eta
+        ####
+        
+        #
+        granulationStrategy.compMin=minComp
+        granulationStrategy.compMax=maxComp
+        granulationStrategy.cardMin = minCard
+        granulationStrategy.cardMax =maxCard
+        #
         
         granulationStrategy.granulate(granulationBucket)
         f_sym = np.array([symbol.Fvalue for symbol in granulationStrategy.symbols])
@@ -207,10 +223,8 @@ class eabc_Nested:
             symbol.owner = ID
             
         individual.alphabetSize = len(symbols)
-        #Debug
-        # individual.alphabets.append(symbols)
         
-        return (fitness,), symbols
+        return (fitness,), symbols,granulationStrategy.cardMin,granulationStrategy.cardMax,granulationStrategy.compMin,granulationStrategy.compMax
     
     @staticmethod
     def checkBounds(QMAX):
@@ -269,8 +283,8 @@ class eabc_Nested:
                 np.random.uniform(0, 1), #GED edge wcosts
                 np.random.uniform(0, 1),
                 np.random.uniform(0, 1),
-                np.random.uniform(np.finfo(float).eps, 1), #Symbol Threshold
-                np.random.uniform(np.finfo(float).eps, 1)] #Test eta
+                np.random.uniform(np.finfo(float).eps, 1)] #Symbol Threshold
+                #np.random.uniform(np.finfo(float).eps, 1)] #Test eta
         
         if self._problemName ==  'GREC':
             additional  = [np.random.uniform(0, 1) for _ in range(5)]

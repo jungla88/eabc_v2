@@ -11,7 +11,42 @@ class Granulator:
         self._Fweight = eta
         
         self._symbols = []
+        
+        ##TEST global norm for comp and card
+        self._compNormFactors=[0,1]
+        self._cardNormFactors=[0,1]
+        ##
     
+    @property
+    def compMin(self):
+        return self._compNormFactors[0]
+    @compMin.setter
+    def compMin(self,val):
+        if val>=0 and val<=1:
+            self._compNormFactors[0]=val
+    @property
+    def compMax(self):
+        return self._compNormFactors[1]
+    @compMax.setter
+    def compMax(self,val):
+        if val>=0 and val<=1:
+            self._compNormFactors[1]=val
+    @property
+    def cardMin(self):
+        return self._cardNormFactors[0]
+    @cardMin.setter
+    def cardMin(self,val):
+        if val>=0 and val<=1:
+            self._cardNormFactors[0]=val
+
+    @property
+    def cardMax(self):
+        return self._cardNormFactors[1]
+    @cardMax.setter
+    def cardMax(self,val):
+        if val>=0 and val<=1:
+            self._cardNormFactors[1]=val
+            
     @property
     def symbol_thr(self):
         return self._Fsym_threshold

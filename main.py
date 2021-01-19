@@ -54,12 +54,9 @@ def main(dataTR,dataVS,dataTS,N_subgraphs,mu,lambda_,ngen,maxorder,cxpb,mutpb):
         
     ##################
     # Evaluate the individuals with an invalid fitness
-    DEBUG_FIXSUBGRAPH = False
     DEBUG_FITNESS = True
     DEBUG_INDOCC = True
     print("Initializing populations...")
-    if DEBUG_FIXSUBGRAPH:
-        print("DEBUG SUBGRAPH STOCHASTIC TRUE")
     if DEBUG_FITNESS:
         print("DEBUG FITNESS TRUE")
     if DEBUG_INDOCC:
@@ -68,27 +65,34 @@ def main(dataTR,dataVS,dataTS,N_subgraphs,mu,lambda_,ngen,maxorder,cxpb,mutpb):
     #Initialize a dict of swarms - {key:label - value:deap popolution}
     population = {thisClass:toolbox.population(n=mu) for thisClass in classes}
     IDagentsHistory = {thisClass:[ind.ID for ind in population[thisClass]] for thisClass in classes}
+    #
+    normFfactors = {thisClass:{'minComp':1,'maxComp':0,'minCard':1,'maxCard':0} for thisClass in classes}
+    #
     
-    if DEBUG_FIXSUBGRAPH:
-        subgraphsByclass = {thisClass:[] for thisClass in classes}
-        
+    
     for swarmClass in classes:
-
+        
+        minComp=normFfactors[swarmClass]['minComp']
+        maxComp=normFfactors[swarmClass]['maxComp']
+        minCard=normFfactors[swarmClass]['minCard']
+        maxCard=normFfactors[swarmClass]['maxCard']
+        
         thisClassPatternIDs = np.where(np.asarray(dataTR.labels)==swarmClass)[0]
         classAwareTR = dataTR[thisClassPatternIDs.tolist()]
-        ##
-        if DEBUG_FIXSUBGRAPH:
-            subgraphsByclass[swarmClass] = subgraph_extr.randomExtractDataset(classAwareTR, N_subgraphs)
-            subgraphs = [subgraphsByclass[swarmClass] for _ in population[swarmClass]]
-        else:
-            subgraphs = [subgraph_extr.randomExtractDataset(classAwareTR, N_subgraphs) for _ in population[swarmClass]]
-        ##
+        subgraphs = [subgraph_extr.randomExtractDataset(classAwareTR, N_subgraphs) for _ in population[swarmClass]]
+        
+        minComp=[normFfactors[swarmClass]['minComp'] for _ in population[swarmClass]]
+        maxComp=[normFfactors[swarmClass]['maxComp'] for _ in population[swarmClass]]
+        minCard=[normFfactors[swarmClass]['minCard'] for _ in population[swarmClass]]
+        maxCard=[normFfactors[swarmClass]['maxCard'] for _ in population[swarmClass]]
 
-#        invalid_ind = [ind for ind in population[swarmClass] if not ind.fitness.valid]
-#        fitnesses,symbols = zip(*toolbox.map(toolbox.evaluate, zip(invalid_ind,subgraphs)))
+        fitnesses,symbols,minCard,maxCard,minComp,maxComp = zip(*toolbox.map(toolbox.evaluate, zip(population[swarmClass],subgraphs,minComp,maxComp,minCard,maxCard)))
 
-        # for ind, fit in zip(invalid_ind, fitnesses):
-        #     ind.fitness.values = fit
+        normFfactors[swarmClass]['minComp']=min(minComp)
+        normFfactors[swarmClass]['maxComp']=max(maxComp)
+        normFfactors[swarmClass]['minCard']=min(minCard)
+        normFfactors[swarmClass]['maxCard']=max(maxCard)
+        
 
     #Log book
     LogAgents = {gen: {thisClass:[] for thisClass in classes} for gen in range(ngen+1)}
@@ -113,13 +117,32 @@ def main(dataTR,dataVS,dataTS,N_subgraphs,mu,lambda_,ngen,maxorder,cxpb,mutpb):
                 
                 #Select both old and offspring for evaluation in order to run agents
                 pop = population[swarmClass] + offspring
-                #Select pop number of buckets to be assigned to agents
 
+                #Select pop number of buckets to be assigned to agents
                 subgraphs = [subgraph_extr.randomExtractDataset(classAwareTR, N_subgraphs) for _ in pop]
                 
-                #Run individual and return the partial fitness comp+card
-                fitnesses,alphabets = zip(*toolbox.map(toolbox.evaluate, zip(pop,subgraphs)))
+                #
+                minComp=[normFfactors[swarmClass]['minComp'] for _ in pop]
+                maxComp=[normFfactors[swarmClass]['maxComp'] for _ in pop]
+                minCard=[normFfactors[swarmClass]['minCard'] for _ in pop]
+                maxCard=[normFfactors[swarmClass]['maxCard'] for _ in pop]
+                #
+               
+                #
+                assert(all([len(item)==len(pop) for item in [subgraphs,minComp,maxComp,minCard,maxCard]]))
+                #
 
+                #Run individual and return the partial fitness comp+card
+                #fitnesses,alphabets = zip(*toolbox.map(toolbox.evaluate, zip(pop,subgraphs)))
+                fitnesses,alphabets,minCard,maxCard,minComp,maxComp = zip(*toolbox.map(toolbox.evaluate, zip(pop,subgraphs,minComp,maxComp,minCard,maxCard)))
+            
+                #
+                normFfactors[swarmClass]['minComp']=min(minComp)
+                normFfactors[swarmClass]['maxComp']=max(maxComp)
+                normFfactors[swarmClass]['minCard']=min(minCard)
+                normFfactors[swarmClass]['maxCard']=max(maxCard)
+                #
+                
                 #Store agent number of symbols and fix replicated individuals alphabet size issue
                 ids = np.asarray([ind.ID for ind in pop])                
                 uniqueIds, indices, count = np.unique(ids,return_inverse=True,return_counts=True)
@@ -247,7 +270,9 @@ def main(dataTR,dataVS,dataTS,N_subgraphs,mu,lambda_,ngen,maxorder,cxpb,mutpb):
                     if DEBUG_INDOCC:
                         fitmean.append(fit)
                 
-                print([[ind.ID,ind.fitness.values] for ind in pop])
+                #print([[ind.ID,ind.fitness.values] for ind in pop])
+                for ind in pop:
+                    print("{} - {} - Symbols: {} - Fitness: {}".format(ind.ID, ind,ind.alphabetSize, ind.fitness.values))
                 ##           
                 # x = np.asarray([ind.fitness.values[0] for ind in pop])
                 # y = np.asarray([fit[0] for fit in fitmean])
@@ -346,10 +371,10 @@ if __name__ == "__main__":
     np.random.seed(seed)
     # Parameter setup
     # They should be setted by cmd line
-    # path = "/home/luca/Documenti/Progetti/E-ABC_v2/eabc_v2/Datasets/IAM/Letter3/"
-    # name = "LetterH"
-    path = "/home/luca/Documenti/Progetti/E-ABC_v2/eabc_v2/Datasets/IAM/GREC/"
-    name = "GREC"  
+    path = "/home/luca/Documenti/Progetti/E-ABC_v2/eabc_v2/Datasets/IAM/Letter3/"
+    name = "LetterH"
+    #path = "/home/luca/Documenti/Progetti/E-ABC_v2/eabc_v2/Datasets/IAM/GREC/"
+    #name = "GREC"  
     # path = "/home/luca/Documenti/Progetti/E-ABC_v2/eabc_v2/Datasets/IAM/AIDS/"
     # name = "AIDS" 
     N_subgraphs = 100
