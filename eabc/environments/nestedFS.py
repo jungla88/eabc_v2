@@ -143,7 +143,7 @@ class eabc_Nested:
 
         """
         
-        individual,granulationBucket,minComp,maxComp,minCard,maxCard = args
+        individual,granulationBucket=args
         Q= individual[0]
         wNSub= individual[1]
         wNIns= individual[2]
@@ -200,14 +200,7 @@ class eabc_Nested:
         ####ETA
         #granulationStrategy.eta = eta
         ####
-        
-        #
-        granulationStrategy.compMin=minComp
-        granulationStrategy.compMax=maxComp
-        granulationStrategy.cardMin = minCard
-        granulationStrategy.cardMax =maxCard
-        #
-        
+
         granulationStrategy.granulate(granulationBucket)
         f_sym = np.array([symbol.Fvalue for symbol in granulationStrategy.symbols])
     #    f = np.average(f_sym) if f_sym.size!=0 else np.nan
@@ -224,7 +217,7 @@ class eabc_Nested:
             
         individual.alphabetSize = len(symbols)
         
-        return (fitness,), symbols,granulationStrategy.cardMin,granulationStrategy.cardMax,granulationStrategy.compMin,granulationStrategy.compMax
+        return (fitness,), symbols
     
     @staticmethod
     def checkBounds(QMAX):

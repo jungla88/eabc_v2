@@ -65,33 +65,29 @@ def main(dataTR,dataVS,dataTS,N_subgraphs,mu,lambda_,ngen,maxorder,cxpb,mutpb):
     #Initialize a dict of swarms - {key:label - value:deap popolution}
     population = {thisClass:toolbox.population(n=mu) for thisClass in classes}
     IDagentsHistory = {thisClass:[ind.ID for ind in population[thisClass]] for thisClass in classes}
-    #
-    normFfactors = {thisClass:{'minComp':1,'maxComp':0,'minCard':1,'maxCard':0} for thisClass in classes}
-    #
     
-    
-    for swarmClass in classes:
+    # for swarmClass in classes:
         
-        minComp=normFfactors[swarmClass]['minComp']
-        maxComp=normFfactors[swarmClass]['maxComp']
-        minCard=normFfactors[swarmClass]['minCard']
-        maxCard=normFfactors[swarmClass]['maxCard']
+    #     minComp=normFfactors[swarmClass]['minComp']
+    #     maxComp=normFfactors[swarmClass]['maxComp']
+    #     minCard=normFfactors[swarmClass]['minCard']
+    #     maxCard=normFfactors[swarmClass]['maxCard']
         
-        thisClassPatternIDs = np.where(np.asarray(dataTR.labels)==swarmClass)[0]
-        classAwareTR = dataTR[thisClassPatternIDs.tolist()]
-        subgraphs = [subgraph_extr.randomExtractDataset(classAwareTR, N_subgraphs) for _ in population[swarmClass]]
+    #     thisClassPatternIDs = np.where(np.asarray(dataTR.labels)==swarmClass)[0]
+    #     classAwareTR = dataTR[thisClassPatternIDs.tolist()]
+    #     subgraphs = [subgraph_extr.randomExtractDataset(classAwareTR, N_subgraphs) for _ in population[swarmClass]]
         
-        minComp=[normFfactors[swarmClass]['minComp'] for _ in population[swarmClass]]
-        maxComp=[normFfactors[swarmClass]['maxComp'] for _ in population[swarmClass]]
-        minCard=[normFfactors[swarmClass]['minCard'] for _ in population[swarmClass]]
-        maxCard=[normFfactors[swarmClass]['maxCard'] for _ in population[swarmClass]]
+    #     minComp=[normFfactors[swarmClass]['minComp'] for _ in population[swarmClass]]
+    #     maxComp=[normFfactors[swarmClass]['maxComp'] for _ in population[swarmClass]]
+    #     minCard=[normFfactors[swarmClass]['minCard'] for _ in population[swarmClass]]
+    #     maxCard=[normFfactors[swarmClass]['maxCard'] for _ in population[swarmClass]]
 
-        fitnesses,symbols,minCard,maxCard,minComp,maxComp = zip(*toolbox.map(toolbox.evaluate, zip(population[swarmClass],subgraphs,minComp,maxComp,minCard,maxCard)))
+    #     fitnesses,symbols,minCard,maxCard,minComp,maxComp = zip(*toolbox.map(toolbox.evaluate, zip(population[swarmClass],subgraphs,minComp,maxComp,minCard,maxCard)))
 
-        normFfactors[swarmClass]['minComp']=min(minComp)
-        normFfactors[swarmClass]['maxComp']=max(maxComp)
-        normFfactors[swarmClass]['minCard']=min(minCard)
-        normFfactors[swarmClass]['maxCard']=max(maxCard)
+    #     normFfactors[swarmClass]['minComp']=min(minComp)
+    #     normFfactors[swarmClass]['maxComp']=max(maxComp)
+    #     normFfactors[swarmClass]['minCard']=min(minCard)
+    #     normFfactors[swarmClass]['maxCard']=max(maxCard)
         
 
     #Log book
@@ -100,7 +96,7 @@ def main(dataTR,dataVS,dataTS,N_subgraphs,mu,lambda_,ngen,maxorder,cxpb,mutpb):
     
     # Begin the generational process   
     ClassAlphabets={thisClass:[] for thisClass in classes}
-    for gen in range(1, ngen + 1):
+    for gen in range(0, ngen):
         
             print("Generation: {}".format(gen))
             
@@ -109,7 +105,9 @@ def main(dataTR,dataVS,dataTS,N_subgraphs,mu,lambda_,ngen,maxorder,cxpb,mutpb):
                 print("############")
                 #Generate the offspring: mutation OR crossover OR reproduce and individual as it is
                 #offspring = eabc_Nested.varOr(population[swarmClass], toolbox, lambda_, cxpb, mutpb)
-                offspring = toolbox.varOr(population=population[swarmClass],toolbox=toolbox,lambda_=lambda_, idHistory=IDagentsHistory[swarmClass])
+                offspring = []
+                if gen > 0:
+                    offspring = toolbox.varOr(population=population[swarmClass],toolbox=toolbox,lambda_=lambda_, idHistory=IDagentsHistory[swarmClass])
                 
                 #Selecting data for this swarm               
                 thisClassPatternIDs = np.where(np.asarray(dataTR.labels)==swarmClass)[0]
@@ -121,27 +119,9 @@ def main(dataTR,dataVS,dataTS,N_subgraphs,mu,lambda_,ngen,maxorder,cxpb,mutpb):
                 #Select pop number of buckets to be assigned to agents
                 subgraphs = [subgraph_extr.randomExtractDataset(classAwareTR, N_subgraphs) for _ in pop]
                 
-                #
-                minComp=[normFfactors[swarmClass]['minComp'] for _ in pop]
-                maxComp=[normFfactors[swarmClass]['maxComp'] for _ in pop]
-                minCard=[normFfactors[swarmClass]['minCard'] for _ in pop]
-                maxCard=[normFfactors[swarmClass]['maxCard'] for _ in pop]
-                #
-               
-                #
-                assert(all([len(item)==len(pop) for item in [subgraphs,minComp,maxComp,minCard,maxCard]]))
-                #
 
                 #Run individual and return the partial fitness comp+card
-                #fitnesses,alphabets = zip(*toolbox.map(toolbox.evaluate, zip(pop,subgraphs)))
-                fitnesses,alphabets,minCard,maxCard,minComp,maxComp = zip(*toolbox.map(toolbox.evaluate, zip(pop,subgraphs,minComp,maxComp,minCard,maxCard)))
-            
-                #
-                normFfactors[swarmClass]['minComp']=min(minComp)
-                normFfactors[swarmClass]['maxComp']=max(maxComp)
-                normFfactors[swarmClass]['minCard']=min(minCard)
-                normFfactors[swarmClass]['maxCard']=max(maxCard)
-                #
+                fitnesses,alphabets = zip(*toolbox.map(toolbox.evaluate, zip(pop,subgraphs)))
                 
                 #Store agent number of symbols and fix replicated individuals alphabet size issue
                 ids = np.asarray([ind.ID for ind in pop])                
@@ -158,7 +138,9 @@ def main(dataTR,dataVS,dataTS,N_subgraphs,mu,lambda_,ngen,maxorder,cxpb,mutpb):
                 #Restart with previous symbols
                 thisGenClassAlphabet = alphabets + ClassAlphabets[swarmClass]
                 
-                embeddingStrategy = SymbolicHistogram(isSymbolDiss=True,isParallel=True)
+#                embeddingStrategy = SymbolicHistogram(isSymbolDiss=True,isParallel=True)
+                embeddingStrategy = SymbolicHistogram(isSymbolDiss=True,isParallel=False)
+
         
                 #Embedding with current symbols
                 embeddingStrategy.getSet(expTRSet, thisGenClassAlphabet)
@@ -292,7 +274,10 @@ def main(dataTR,dataVS,dataTS,N_subgraphs,mu,lambda_,ngen,maxorder,cxpb,mutpb):
                 ##
                 
                 # Select the next generation population for the current swarm
-                population[swarmClass][:] = toolbox.select(pop, mu)
+                if gen > 0:
+                    population[swarmClass][:] = toolbox.select(pop, mu)
+                else:
+                    population[swarmClass][:] = pop
                 #Save Informedness for class and gen
                 LogPerf[swarmClass].append([J,sum(np.asarray(best_GA2)==1),len(best_GA2)])
                 
