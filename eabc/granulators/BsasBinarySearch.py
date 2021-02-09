@@ -5,14 +5,12 @@ from eabc.granulators import Granule
 from eabc.extras import BSAS
 from eabc.extras.BinarySearch import BinarySearch
 
-import numpy as np
-
-
+from kneed import KneeLocator
 
 class BsasBinarySearch(Granulator):
     
     #TEST: Trying normalization of F value fo min-max approach
-    def __init__(self,DistanceFunction,clusterRepresentative,tStep=0.1,Qmax=100,isScaledF=True):
+    def __init__(self,DistanceFunction,clusterRepresentative,tStep=0.1,Qmax=100):
         
         self._distanceFunction = DistanceFunction
         self._representation = clusterRepresentative #An object for evaluate the representative
@@ -22,9 +20,6 @@ class BsasBinarySearch(Granulator):
         self._method=BSAS(self._representation,self._distanceFunction, Q= self._Qmax)
         self._tStep = tStep
  
-        #TEST: min-max F scaling
-        self._isScaledF = isScaledF   
-     
         super().__init__()
         
     @property
@@ -44,16 +39,27 @@ class BsasBinarySearch(Granulator):
         partitions = BinarySearch(Dataset.data,self._method,self._tStep)
         
         #Select partition based on persistence
-        gap = 0
-        bestP = None
-        for i in range(len(partitions)-1):                        
-            theta = sorted(list(partitions.keys()))[i]
-            thetaNext = sorted(list(partitions.keys()))[i+1]            
-            gapTemp = thetaNext - theta            
-            if gapTemp > gap:
-                bestP = i
+        # gap = 0
+        # bestP = None
+        # for i in range(len(partitions)-1):                        
+        #     theta = sorted(list(partitions.keys()))[i]
+        #     thetaNext = sorted(list(partitions.keys()))[i+1]            
+        #     gapTemp = thetaNext - theta            
+        #     if gapTemp > gap:
+        #         bestP = i
+        #theta = sorted(list(partitions.keys()))[bestP]
         
-        theta = sorted(list(partitions.keys()))[bestP]
+        x = sorted([t for t in partitions.keys()])
+        y = sorted([len(cluster[1]) for cluster in partitions.values()],reverse = True)
+        print(x,y)
+        kl = KneeLocator(x,y,curve='convex',direction = 'decreasing',S = 2)
+        theta= kl.knee
+        if kl.knee:
+            theta = kl.knee
+        else:
+            #No symbol produced if knee is not found
+            return
+            
         
         clustersLabels, reprElems = partitions[theta][0],partitions[theta][1]
 
@@ -73,8 +79,7 @@ class BsasBinarySearch(Granulator):
         #         newGr = Granule(repres._representativeElem,self._distanceFunction,F,normalizeCard[i],normalizeComp[i])
         #         super(BsasBinarySearch,self)._addSymbol(newGr)
         
-        # singleton or universe clusters
-        
+        # singleton or universe clusters        
         clustersLabels,reprElems = super(BsasBinarySearch,self)._removeSingularity(clustersLabels,reprElems,Dataset)
             
         nClust = len(reprElems)
@@ -82,29 +87,8 @@ class BsasBinarySearch(Granulator):
         normalizeCard = [1-(len(clustersLabels[l])/len(Dataset.data)) for l in range(nClust)]
         normalizeComp = [reprElems[l]._SOD/(len(clustersLabels[l])-1) for l in range(nClust)]
 
-        ##
-        compMin = min(normalizeComp+[self.compMin])
-        compMax = max(normalizeComp+[self.compMax])
-        cardMin = min(normalizeCard+[self.cardMin])
-        cardMax = max(normalizeCard+[self.cardMax])
-        ##
-        
-        if reprElems:
-            rangeComp = compMax-compMin
-            rangeCard = cardMax-cardMin
-        
-
         for i,repres in enumerate(reprElems):
-            
-            if self._isScaledF:
-                normalizeComp[i] = (normalizeComp[i] - compMin)/rangeComp if rangeComp!=0 else 0
-                normalizeCard[i] = (normalizeCard[i] - cardMin)/rangeCard if rangeCard!=0 else 0
             
             F = super(BsasBinarySearch,self)._evaluateF(normalizeComp[i],normalizeCard[i])
             newGr = Granule(repres._representativeElem,self._distanceFunction,F,normalizeCard[i],normalizeComp[i])
             super(BsasBinarySearch,self)._addSymbol(newGr)
-            
-            self.compMin = compMin
-            self.compMax = compMax
-            self.cardMin = cardMin
-            self.cardMax = cardMax
