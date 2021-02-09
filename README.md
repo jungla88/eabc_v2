@@ -2,8 +2,9 @@
 
 ##### Requirements
 
-- scikit-lean
+- scikit-learn
 - networkx
 - deap
 - littleballoffur
+- kneed
 - pydot
