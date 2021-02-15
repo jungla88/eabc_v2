@@ -70,7 +70,7 @@ class Dataset(object):
     #Return all labels in dataset
     @property
     def labels(self):
-        return sorted(list(map(lambda x: x.y, self._data)))
+        return list(map(lambda x: x.y, self._data))
     
     @property
     def unique_labels(self):
