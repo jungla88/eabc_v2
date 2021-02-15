@@ -21,16 +21,15 @@ class extr_strategy:
         self.sampler = BreadthFirstSearchSampler()
         self.max_order = max_order
         
-        if seed:
-            self._seed = seed;
-            numpy.random.seed(seed)
+        self._rng = numpy.random.default_rng(seed)
+
             
         
     def __call__(self, data):
         
         upperBoundOrder = self.max_order if data.x.order() > self.max_order else data.x.order()
         #TODO: else case always exclude highest value from being extracted
-        order = numpy.random.randint(1, upperBoundOrder)  #high value excluded for randint         
+        order = self._rng.random.randint(1, upperBoundOrder)  #high value excluded for randint         
 
         if order == 1:
             self.sampler = RandomNodeSampler(number_of_nodes=1)

@@ -19,7 +19,10 @@ class Medoid(Representative):
     #<<<medoid._isApprox
     #False
     _PoolSize = 20
-    _isApprox = True    
+    _isApprox = True
+    
+    #Seeding the rng always with the same seed prevents inconsistency properties between equal medoids due to randomness in update
+    _rng = np.random.default_rng(0)
     
     def __init__(self,initRepr = None):#,approximateUpdate = True, PoolSize = 20):
 
@@ -67,7 +70,7 @@ class Medoid(Representative):
         else:
             #Workaround for offline evaluation
             #Extract poolSize pattern from cluster and evaluate the minSOD
-            ids = np.random.choice(len(cluster),self._PoolSize,replace = False)
+            ids = self._rng.choice(len(cluster),self._PoolSize,replace = False)
             self._cluster = [cluster[i] for i in ids]
             M = self.__fullEvalMat(self._cluster,Dissimilarity)
             
@@ -95,7 +98,7 @@ class Medoid(Representative):
         
         else:            
             #randomly choose two pattern from the pool
-            id_p1, id_p2 = np.random.choice(self._PoolSize,2,replace=False)
+            id_p1, id_p2 = self._rng.choice(self._PoolSize,2,replace=False)
             d1 = self._DistanceMatrix[self._minSodIdx,id_p1]
             d2 = self._DistanceMatrix[self._minSodIdx,id_p2]                             
             #Farthest pattern from medoid will be changed 

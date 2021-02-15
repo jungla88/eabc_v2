@@ -13,9 +13,8 @@ class Extractor:
         
         self.extr_strategy = strategy
         self._seed = seed;
-        if self._seed:
-            numpy.random.seed(seed)
 
+        self._rng = numpy.random.default_rng(self._seed)
             
     
     def extract(self,pattern,start_node=None):
@@ -29,8 +28,8 @@ class Extractor:
         substruct_Dataset = dataset.fresh_dpcopy()
         
         for _ in range(W):
-            idx = numpy.random.randint(0,len(dataset))            
-            self.extr_strategy.order = numpy.random.randint(1,maxOrder + 1)
+            idx = self._rng.integers(low = 0,high = len(dataset))            
+            self.extr_strategy.order = self._rng.integers(low = 1,high = maxOrder,endpoint = True)
             g = self.extract(dataset[idx])
 
             #Add the key of the graph related to dataset list index 

@@ -21,9 +21,7 @@ class extr_strategy:
 
         self._order = order
         
-        if seed:
-            self._seed = seed;
-            numpy.random.seed(seed)
+        self._rng = numpy.random.default_rng(seed)
             
 
     @property
@@ -41,7 +39,7 @@ class extr_strategy:
         #Take the connected component where the starting node resides if provided,
         #Otherwise select a node at random and return the connected component in which it resides.
         if not nx.is_connected(data.x):
-            nodeComponent = start_node if start_node else numpy.random.choice(G.nodes())
+            nodeComponent = start_node if start_node else self._rng.choice(G.nodes())
             #Get the connected components
             G = G.subgraph(nx.node_connected_component(G,nodeComponent)).copy()
 

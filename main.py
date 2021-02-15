@@ -1,18 +1,16 @@
 
 from deap import base, creator,tools
-from deap.algorithms import varOr
 import numpy as np
 import random
 import pickle
-import networkx as nx
 import multiprocessing
 from functools import partial
-import copy
-import itertools
 
 from sklearn.neighbors import KNeighborsClassifier as KNN
+from sklearn.cluster import DBSCAN
 from sklearn.metrics import confusion_matrix
 from scipy.optimize import differential_evolution
+from scipy.spatial.distance import pdist,squareform
 
 from Datasets.IAM import IamDotLoader
 from Datasets.IAM import Letter,GREC,AIDS
@@ -40,13 +38,13 @@ def IAMreader(parser,path):
     return graphs, classes 
 
 
-def main(dataTR,dataVS,dataTS,N_subgraphs,mu,lambda_,ngen,maxorder,cxpb,mutpb):
+def main(dataTR,dataVS,dataTS,N_subgraphs,mu,lambda_,ngen,maxorder,cxpb,mutpb,seed):
     
     print("Setup...")
     #Graph decomposition
     # extract_func = randomwalk_restart.extr_strategy(max_order=maxorder)
-    extract_func = randomwalk_restart.extr_strategy()
-    subgraph_extr = Extractor(extract_func)
+    extract_func = randomwalk_restart.extr_strategy(seed = seed)
+    subgraph_extr = Extractor(extract_func,seed = seed)
 
     expTRSet = subgraph_extr.decomposeGraphDataset(dataTR,maxOrder= maxorder)
     expVSSet = subgraph_extr.decomposeGraphDataset(dataVS,maxOrder= maxorder)
@@ -61,7 +59,7 @@ def main(dataTR,dataVS,dataTS,N_subgraphs,mu,lambda_,ngen,maxorder,cxpb,mutpb):
         print("DEBUG FITNESS TRUE")
     if DEBUG_INDOCC:
         print("DEBUG REPEATED IND TRUE")        
-    classes= dataTR.unique_labels()
+    classes= dataTR.unique_labels
     #Initialize a dict of swarms - {key:label - value:deap popolution}
     population = {thisClass:toolbox.population(n=mu) for thisClass in classes}
     IDagentsHistory = {thisClass:[ind.ID for ind in population[thisClass]] for thisClass in classes}
@@ -135,6 +133,38 @@ def main(dataTR,dataVS,dataTS,N_subgraphs,mu,lambda_,ngen,maxorder,cxpb,mutpb):
                 #Concatenate symbols if not empty
                 alphabets = sum(alphabets,[])
                 
+                #
+#                 from scipy.spatial.distance import squareform
+# #                if gen>0:
+#                 metrics = np.zeros((len(alphabets),6))
+#                 for i,sym in enumerate(alphabets):
+#                     d = sym._DissimilarityMeasure
+#                     nodeP = [d.nodeInsWeight, d.nodeDelWeight, d.nodeSubWeight]
+#                     edgeP = [d.edgeInsWeight, d.edgeDelWeight, d.edgeSubWeight]
+#                     params = nodeP+edgeP
+#                     metrics[i] = np.asarray(params,dtype=float)
+#                 X = squareform(pdist(metrics))/np.sqrt(len(params))
+#                 clustering =  DBSCAN(eps=0.1, min_samples=2,metric="precomputed")
+#                 clustering.fit(X)
+#                 clustRes = clustering.labels_
+#                 mergedClust =[]
+#                 for label in clustRes:
+#                     if label >= 0:
+#                         symbolsClust = np.where(clustRes==label)[0].tolist()
+#                         graphs,diss  = zip(*[[alphabets[i].representative,alphabets[i].dissimilarity] for i in symbolsClust])
+#                         M = squareform(diss[0].pdist(graphs))
+#                         clustering =  DBSCAN(eps=0.2, min_samples=2,metric="precomputed")
+#                         clustering.fit(M)
+#                         labRes = clustering.labels_
+#                         for l in labRes:
+#                             cl = np.where(labRes == l)[0]
+#                             dissCl = M[np.ix_(cl, cl)]
+#                             s = cl[np.argmin(np.sum(dissCl))]
+#                             mergedClust.append(s)
+
+#                 alphabets = [alphabets[i] for i in mergedClust]
+                #
+                    
                 #Restart with previous symbols
                 thisGenClassAlphabet = alphabets + ClassAlphabets[swarmClass]
                 
@@ -188,6 +218,7 @@ def main(dataTR,dataVS,dataTS,N_subgraphs,mu,lambda_,ngen,maxorder,cxpb,mutpb):
                                                                  mutation=MUTPB_GA2, 
                                                                  workers=-1, 
                                                                  polish=False, 
+                                                                 seed = seed,
                                                                  updating='deferred')
                 best_GA2 = [round(i) for i in TuningResults_GA2.x]
                 print("Selected {}/{} feature".format(sum(np.asarray(best_GA2)==1), len(best_GA2)))
@@ -248,6 +279,7 @@ def main(dataTR,dataVS,dataTS,N_subgraphs,mu,lambda_,ngen,maxorder,cxpb,mutpb):
                         fitness = np.asarray(fitnessesRewarded)
                         indices = np.where(ids == ind.ID)
                         fit = np.mean(fitness[indices]),
+                    #Assign fitness
                     ind.fitness.values = fit
                     if DEBUG_INDOCC:
                         fitmean.append(fit)
@@ -316,7 +348,8 @@ def main(dataTR,dataVS,dataTS,N_subgraphs,mu,lambda_,ngen,maxorder,cxpb,mutpb):
                                                      dataVS.labels),
                                                      maxiter=100, init=DE_Pop, 
                                                      recombination=CXPB_GA2,
-                                                     mutation=MUTPB_GA2, 
+                                                     mutation=MUTPB_GA2,
+                                                     seed = seed,
                                                      workers=-1, 
                                                      polish=False, 
                                                      updating='deferred')
@@ -351,9 +384,9 @@ def main(dataTR,dataVS,dataTS,N_subgraphs,mu,lambda_,ngen,maxorder,cxpb,mutpb):
 if __name__ == "__main__":
 
 
-    seed = 64
+    seed = 0
     random.seed(seed)
-    np.random.seed(seed)
+    npRng = np.random.default_rng(seed)
     # Parameter setup
     # They should be setted by cmd line
     path = "/home/luca/Documenti/Progetti/E-ABC_v2/eabc_v2/Datasets/IAM/Letter3/"
@@ -389,9 +422,9 @@ if __name__ == "__main__":
         
     
     IAMreadergraph = partial(IAMreader,parser)
-    rawtr = graph_nxDataset(path+"Training/", name, reader = IAMreadergraph)[:100]
-    rawvs = graph_nxDataset(path+"Validation/", name, reader = IAMreadergraph)[:100]
-    rawts = graph_nxDataset(path+"Test/", name, reader = IAMreadergraph)[:100]
+    rawtr = graph_nxDataset(path+"Training/", name, reader = IAMreadergraph,seed=npRng)[:100]
+    rawvs = graph_nxDataset(path+"Validation/", name, reader = IAMreadergraph,seed = npRng)[:100]
+    rawts = graph_nxDataset(path+"Test/", name, reader = IAMreadergraph,seed = npRng)[:100]
 
     ####
     if name in ['LetterH', 'LetterM' ,'LetterL']:  
@@ -458,7 +491,8 @@ if __name__ == "__main__":
                                                                                                                                       ngen,
                                                                                                                                       maxorder,
                                                                                                                                       CXPROB,
-                                                                                                                                      MUTPROB)
+                                                                                                                                      MUTPROB,
+                                                                                                                                      npRng)
     
     
 

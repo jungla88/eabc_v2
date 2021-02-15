@@ -5,7 +5,7 @@ from eabc.data import Graph_nx
 
 class graph_nxDataset(Dataset):
     
-    def __init__(self, targetObject, name, idx=None, reader= None, transform = None, pre_transform = None):
+    def __init__(self, targetObject, name, idx=None, reader= None, transform = None, pre_transform = None,seed = None):
         
         self.name = name
         self.reader = reader
@@ -13,8 +13,9 @@ class graph_nxDataset(Dataset):
         self.transform = transform;
         self.pre_transform = pre_transform
         self.idx = idx
+        self._seed = seed
         
-        super(graph_nxDataset,self).__init__(self.tObject, idx = self.idx, transform = self.transform, pre_transform=self.pre_transform)
+        super(graph_nxDataset,self).__init__(self.tObject, idx = self.idx, transform = self.transform, pre_transform=self.pre_transform,seed = self._seed)
         
     def process(self):
       
