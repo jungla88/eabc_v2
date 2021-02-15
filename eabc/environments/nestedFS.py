@@ -203,7 +203,6 @@ class eabc_Nested:
 
         granulationStrategy.granulate(granulationBucket)
         f_sym = np.array([symbol.Fvalue for symbol in granulationStrategy.symbols])
-    #    f = np.average(f_sym) if f_sym.size!=0 else np.nan
     
         #f_sym is better when lower. The problem is casted for maximasation
         f = 1-np.average(f_sym) if f_sym.size!=0 else np.nan     
@@ -269,18 +268,18 @@ class eabc_Nested:
             Initial values for breeded individual
 
         """
-        ranges=[np.random.randint(1, QMAX), #BSAS q value bound 
-                np.random.uniform(0, 1), #GED node wcosts
-                np.random.uniform(0, 1),
-                np.random.uniform(0, 1),
-                np.random.uniform(0, 1), #GED edge wcosts
-                np.random.uniform(0, 1),
-                np.random.uniform(0, 1),
-                np.random.uniform(np.finfo(float).eps, 1)] #Symbol Threshold
+        ranges=[random.randint(1, QMAX), #BSAS q value bound 
+                random.uniform(0, 1), #GED node wcosts
+                random.uniform(0, 1),
+                random.uniform(0, 1),
+                random.uniform(0, 1), #GED edge wcosts
+                random.uniform(0, 1),
+                random.uniform(0, 1),
+                random.uniform(np.finfo(float).eps, 1)] #Symbol Threshold
                 #np.random.uniform(np.finfo(float).eps, 1)] #Test eta
         
         if self._problemName ==  'GREC':
-            additional  = [np.random.uniform(0, 1) for _ in range(5)]
+            additional  = [random.uniform(0, 1) for _ in range(5)]
             ranges = ranges + additional
             
         return ranges
