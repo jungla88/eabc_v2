@@ -168,8 +168,8 @@ def main(dataTR,dataVS,dataTS,N_subgraphs,mu,lambda_,ngen,maxorder,cxpb,mutpb,se
                 #Restart with previous symbols
                 thisGenClassAlphabet = alphabets + ClassAlphabets[swarmClass]
                 
-#                embeddingStrategy = SymbolicHistogram(isSymbolDiss=True,isParallel=True)
-                embeddingStrategy = SymbolicHistogram(isSymbolDiss=True,isParallel=False)
+                embeddingStrategy = SymbolicHistogram(isSymbolDiss=True,isParallel=True)
+#                embeddingStrategy = SymbolicHistogram(isSymbolDiss=True,isParallel=False)
 
         
                 #Embedding with current symbols
