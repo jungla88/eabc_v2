@@ -6,8 +6,6 @@ Datasets/tudataset/SYN*
 Datasets/tudataset/AIDS*
 Datasets/iris
 Datasets/IAM/COIL*
-Datasets/IAM/AIDS
-Datasets/IAM/GREC*
 Datasets/IAM/Mut*
 Datasets/IAM/Prot*
 # Byte-compiled / optimized / DLL files

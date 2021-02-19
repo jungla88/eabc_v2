@@ -6,4 +6,5 @@
 - networkx
 - deap
 - littleballoffur
+- kneed
 - pydot

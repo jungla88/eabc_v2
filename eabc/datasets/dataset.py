@@ -6,6 +6,9 @@ class Dataset(object):
     r"""Dataset base class
     """
     
+    seed = None
+    _rng = numpy.random.default_rng(seed)     
+    
     def process(self):
         r"""Processes the dataset to the :obj:`self.processed_dir` folder."""
         raise NotImplementedError
@@ -31,9 +34,9 @@ class Dataset(object):
         
         self._data = []
         self._indices = []
+        
+        self._rng = numpy.random.default_rng(seed)
 
-        self.seed = seed
-        if self.seed is not None: numpy.random.seed(self.seed) 
 
         if isinstance(targetObj, str):
             self.path = targetObj
@@ -68,9 +71,10 @@ class Dataset(object):
     @property
     def labels(self):
         return list(map(lambda x: x.y, self._data))
-        
+    
+    @property
     def unique_labels(self):
-        return set(map(lambda x: x.y, self._data))
+        return sorted(list(set(map(lambda x: x.y, self._data))))
     
     def to_key(self,idx):
         return self._indices[idx]
@@ -102,7 +106,7 @@ class Dataset(object):
         In case :obj:`idx` is a slicing object, *e.g.*, :obj:`[2:5]`, a list, a
         tuple, will return a subset of the
         dataset at the specified indices."""
-        if isinstance(idx, int):
+        if isinstance(idx, (int, numpy.int64,numpy.int32)):
             data = self._data[idx] if self.transform is None else self.transform(copy.copy(self._data[idx])) #Need shallow copy?
             return data
         else:
@@ -144,7 +148,7 @@ class Dataset(object):
                 dataset. (default: :obj:`False`)
         """
 
-        perm = (numpy.random.permutation(len(self))).tolist()
+        perm = (self._rng.permutation(len(self))).tolist()
         dataset = self.index_select(perm)
         return (dataset, perm) if return_perm is True else dataset
     
@@ -163,7 +167,6 @@ class Dataset(object):
         dataset._data = []
         dataset._indices = []     
 
-        dataset.seed = self.seed
-        if self.seed is not None: numpy.random.seed(self.seed)                 
+        dataset._rng = self._rng               
         
         return dataset

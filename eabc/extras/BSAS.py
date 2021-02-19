@@ -28,7 +28,7 @@ class BSAS:
             patternToRepDis = [self.Dissimilarity(x._representativeElem, p) for x in representatives]
             nearestClust = np.argmin(patternToRepDis)
             
-            if patternToRepDis[nearestClust] > self.theta and len(representatives)< self.Q:           
+            if patternToRepDis[nearestClust] >= self.theta and len(representatives)< self.Q:           
                 representatives.append(self.Representative(p))
                 
                 clusters.append([i])

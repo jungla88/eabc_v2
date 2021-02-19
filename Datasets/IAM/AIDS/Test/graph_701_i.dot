@@ -1,0 +1,19 @@
+graph molid165706 {
+	_1	 [charge=0,
+		chem=3,
+		symbol="Cu ",
+		x="2.866",
+		y="-0.25"];
+	_2	 [charge=0,
+		chem=7,
+		symbol="Cl ",
+		x="3.7321",
+		y="0.25"];
+	_1 -- _2	 [valence=1];
+	_3	 [charge=0,
+		chem=7,
+		symbol="Cl ",
+		x=2,
+		y="0.25"];
+	_1 -- _3	 [valence=1];
+}

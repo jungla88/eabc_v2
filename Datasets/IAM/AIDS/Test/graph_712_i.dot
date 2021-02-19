@@ -1,0 +1,34 @@
+graph molid630319 {
+	_1	 [charge=0,
+		chem=2,
+		symbol="O  ",
+		x="3.7321",
+		y="0.5"];
+	_2	 [charge=0,
+		chem=52,
+		symbol="W  ",
+		x="2.866",
+		y=0];
+	_3	 [charge=0,
+		chem=2,
+		symbol="O  ",
+		x=2,
+		y="-0.5"];
+	_2 -- _3	 [valence=2];
+	_4	 [charge=0,
+		chem=2,
+		symbol="O  ",
+		x="3.366",
+		y="-0.866"];
+	_2 -- _4	 [valence=2];
+	_5	 [charge=0,
+		chem=2,
+		symbol="O  ",
+		x="2.366",
+		y="0.866"];
+	_6	 [charge=0,
+		chem=29,
+		symbol="Na ",
+		x="5.7321",
+		y=0];
+}

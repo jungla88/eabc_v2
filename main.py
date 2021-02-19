@@ -1,37 +1,32 @@
 
 from deap import base, creator,tools
-from deap.algorithms import varOr
 import numpy as np
 import random
 import pickle
-import networkx as nx
 import multiprocessing
 from functools import partial
 
-
 from sklearn.neighbors import KNeighborsClassifier as KNN
+from sklearn.cluster import DBSCAN
 from sklearn.metrics import confusion_matrix
 from scipy.optimize import differential_evolution
+from scipy.spatial.distance import pdist,squareform
 
-from Datasets.IAM import IamDotLoader,Letter
+from Datasets.IAM import IamDotLoader
+from Datasets.IAM import Letter,GREC,AIDS
 from eabc.datasets import graph_nxDataset
-from eabc.dissimilarities import BMF
 from eabc.extractors import Extractor
 from eabc.extractors import randomwalk_restart
-from eabc.granulators import BsasBinarySearch
-from eabc.representatives import Medoid
 from eabc.embeddings import SymbolicHistogram
-from eabc.extras.normalizeLetter import normalize
 from eabc.extras.featureSelDE import FSsetup_DE,FSfitness_DE 
+from eabc.environments.nestedFS import eabc_Nested
 
 
-
-def IAMreader(path,name):
+def IAMreader(parser,path):
     
     delimiters = "_", "."      
     
-    if name == 'LetterH' or 'LetterM' or 'LetterL' :
-        Loader = IamDotLoader.DotLoader(Letter.parser,delimiters=delimiters)
+    Loader = IamDotLoader.DotLoader(parser,delimiters=delimiters)
     
     graphDict = Loader.load(path)
     
@@ -42,290 +37,140 @@ def IAMreader(path,name):
     
     return graphs, classes 
 
-def customXover(ind1,ind2):
+
+def main(dataTR,dataVS,dataTS,N_subgraphs,mu,lambda_,ngen,maxorder,cxpb,mutpb,seed):
     
-    #Q
-    g_01,g_02 = tools.cxUniform([ind1[0]], [ind2[0]], CXPROB)
-    #GED
-    g1,g2 = tools.cxTwoPoint(ind1[1:7], ind2[1:7])
-    #Tau
-    g_71,g_72 = tools.cxUniform([ind1[7]], [ind2[7]], CXPROB)
-
-    #
-    ind1[0]=g_01[0]
-    ind2[0]=g_02[0]
-    #
-    for i in range(1,7):
-        ind1[i]=g1[i-1]
-    for i in range(1,7):
-        ind2[i]=g2[i-1]
-    #
-    ind1[7]=g_71[0]
-    ind2[7]=g_72[0]
-
-    return ind1,ind2
-
-    
-def fitness(args):    
-    
-    individual,granulationBucket = args
-    Q= individual[0]
-    wNSub= individual[1]
-    wNIns= individual[2]
-    wNDel= individual[3]
-    wESub= individual[4]
-    wEIns= individual[5]
-    wEDel= individual[6]
-    tau = individual[7]
-    
-    Repr=Medoid
-    
-    #TODO:edit for change dataset
-    diss = Letter.LETTERdiss()
-
-    graphDist=BMF(diss.nodeDissimilarity,diss.edgeDissimilarity)
-    graphDist.nodeSubWeight=wNSub
-    graphDist.nodeInsWeight=wNIns
-    graphDist.nodeDelWeight=wNDel
-    graphDist.edgeSubWeight=wESub
-    graphDist.edgeInsWeight=wEIns
-    graphDist.edgeDelWeight=wEDel
-    
-    granulationStrategy = BsasBinarySearch(graphDist,Repr,0.1)
-    granulationStrategy.BsasQmax = Q
-  
-    granulationStrategy.symbol_thr = tau
-    
-    granulationStrategy.granulate(granulationBucket)
-    f_sym = np.array([symbol.Fvalue for symbol in granulationStrategy.symbols])
-#    f = np.average(f_sym) if f_sym.size!=0 else np.nan
-    f = 1-np.average(f_sym) if f_sym.size!=0 else np.nan     
-    
-    fitness = f if not np.isnan(f) else 0
-    
-    return (fitness,), granulationStrategy.symbols
-
-
-def checkBounds():
-    def decorator(func):
-        def wrapper(*args, **kargs):
-            offspring = func(*args, **kargs)
-            for child in offspring:
-                if child[0] < 1:
-                   child[0] = 1
-                elif child[0]>QMAX/15: # number of letter classes
-                    child[0] = QMAX/15 
-                for i in range(1,len(child)):
-                    if child[i] > 1:
-                        child[i] = 1
-                    elif child[i] <= 0:
-                        child[i] = np.finfo(float).eps
-            return offspring
-        return wrapper
-    return decorator
-
-def gene_bound():
-    ranges=[np.random.randint(1, QMAX), #BSAS q value bound 
-            np.random.uniform(0, 1), #GED node wcosts
-            np.random.uniform(0, 1),
-            np.random.uniform(0, 1),
-            np.random.uniform(0, 1), #GED edge wcosts
-            np.random.uniform(0, 1),
-            np.random.uniform(0, 1),
-            np.random.uniform(np.finfo(float).eps, 1)] #Symbol Threshold
-
-    return ranges
-
-
-
-creator.create("FitnessMax", base.Fitness, weights=(1.0,))
-creator.create("Individual", list, fitness=creator.FitnessMax)
-
-toolbox = base.Toolbox()
-
-pool = multiprocessing.Pool()
-toolbox.register("map", pool.map)
-
-toolbox.register("attr_genes", gene_bound)
-toolbox.register("individual", tools.initIterate,
-                creator.Individual, toolbox.attr_genes)
-toolbox.register("population", tools.initRepeat, list, toolbox.individual,n=100)
-
-toolbox.register("evaluate", fitness)
-#toolbox.register("mate", tools.cxTwoPoint)
-toolbox.register("mate", customXover)
-toolbox.register("mutate", tools.mutFlipBit, indpb=0.05)
-toolbox.register("select", tools.selTournament, tournsize=5)
-
-toolbox.decorate("mate", checkBounds())
-toolbox.decorate("mutate", checkBounds())
-
-QMAX = 500
-CXPROB = 0.33
-MUTPROB = 0.33
-
-def main(N_subgraphs,path,name,mu,lambda_,ngen,maxorder):
-    
-    random.seed(64)
-   
-    cxpb=CXPROB
-    mutpb=MUTPROB
-
-    ###################
-    print("Loading...")
-    
-    
-    IAMreadergraph = partial(IAMreader,name=name)
-    rawtr = graph_nxDataset(path+"Training/", "LetterH", reader = IAMreadergraph)
-    rawvs = graph_nxDataset(path+"Validation/", "LetterH", reader = IAMreadergraph)    
-    rawts = graph_nxDataset(path+"Test/", "LetterH", reader = IAMreadergraph)
-
-    #DEBUG
-    rawtr = rawtr.shuffle()
-    rawvs = rawvs.shuffle()
-    #Removed not connected graph and null graph!
-    cleanDataTr,cleanDataVs,cleanDataTs=[],[],[]
-    for dataset,cleanData in zip([rawtr,rawvs,rawts],[cleanDataTr,cleanDataVs,cleanDataTs]):
-        for g,idx,label in zip(dataset.data,dataset.indices,dataset.labels):
-            if not nx.is_empty(g):
-                if nx.is_connected(g):
-                    cleanData.append((g,idx,label)) 
-
-    cleanDataTr = np.asarray(cleanDataTr,dtype=object)
-    cleanDataVs = np.asarray(cleanDataVs,dtype=object)
-    cleanDataTs = np.asarray(cleanDataTs,dtype=object)    
-    
-    normalize('coords',cleanDataTr[:,0],cleanDataVs[:,0],cleanDataTs[:,0])
-    
-    #Slightly different from dataset used in pygralg
-    dataTR = graph_nxDataset([cleanDataTr[:100,0],cleanDataTr[:100,2]],"LetterH", idx = cleanDataTr[:100,1])
-    dataVS = graph_nxDataset([cleanDataVs[:100,0],cleanDataVs[:100,2]],"LetterH", idx = cleanDataVs[:100,1])    
-    dataTS = graph_nxDataset([cleanDataTs[:100,0],cleanDataTs[:100,2]],"LetterH", idx = cleanDataTs[:100,1])    
-
-    del rawtr
-    del rawvs
-    del rawts
-    ##################
-
-
     print("Setup...")
-    
-    
     #Graph decomposition
-    extract_func = randomwalk_restart.extr_strategy(max_order=maxorder)
-    subgraph_extr = Extractor(extract_func)
+    # extract_func = randomwalk_restart.extr_strategy(max_order=maxorder)
+    extract_func = randomwalk_restart.extr_strategy(seed = seed)
+    subgraph_extr = Extractor(extract_func,seed = seed)
 
-
-    expTRSet = dataTR.fresh_dpcopy()
-    for i,x in enumerate(dataTR):
-        k=0
-        while(k<50):
-            for j in range(1,maxorder):
-                subgraph_extr.max_order=j
-                expTRSet.add_keyVal(dataTR.to_key(i),subgraph_extr.extract(x))
-            k+=6
-    expVSSet = dataVS.fresh_dpcopy()
-    for i,x in enumerate(dataVS):
-        k=0
-        while(k<50):
-            for j in range(1,maxorder):
-                subgraph_extr.max_order=j
-                expVSSet.add_keyVal(dataVS.to_key(i),subgraph_extr.extract(x))
-            k+=6
-            expVSSet.add_keyVal(dataVS.to_key(i),subgraph_extr.extract(x))
-    expTSSet = dataTS.fresh_dpcopy()
-    for i,x in enumerate(dataTS):
-        k=0
-        while(k<50):
-            for j in range(1,maxorder):
-                subgraph_extr.max_order=j
-                expTSSet.add_keyVal(dataTS.to_key(i),subgraph_extr.extract(x))
-            k+=6
-            expTSSet.add_keyVal(dataTS.to_key(i),subgraph_extr.extract(x))            
-
-    
-
-
+    expTRSet = subgraph_extr.decomposeGraphDataset(dataTR,maxOrder= maxorder)
+    expVSSet = subgraph_extr.decomposeGraphDataset(dataVS,maxOrder= maxorder)
+    expTSSet = subgraph_extr.decomposeGraphDataset(dataTS,maxOrder= maxorder)
+        
     ##################
     # Evaluate the individuals with an invalid fitness
-    DEBUG_FIXSUBGRAPH = False
+    DEBUG_FITNESS = True
+    DEBUG_INDOCC = True
     print("Initializing populations...")
-    if DEBUG_FIXSUBGRAPH:
-        print("DEBUG SUBGRAPH STOCHASTIC TRUE")
-    classes= dataTR.unique_labels()
+    if DEBUG_FITNESS:
+        print("DEBUG FITNESS TRUE")
+    if DEBUG_INDOCC:
+        print("DEBUG REPEATED IND TRUE")        
+    classes= dataTR.unique_labels
     #Initialize a dict of swarms - {key:label - value:deap popolution}
     population = {thisClass:toolbox.population(n=mu) for thisClass in classes}
-
-    if DEBUG_FIXSUBGRAPH:
-        subgraphsByclass = {thisClass:[] for thisClass in classes}
+    IDagentsHistory = {thisClass:[ind.ID for ind in population[thisClass]] for thisClass in classes}
+    
+    # for swarmClass in classes:
         
-    for swarmClass in classes:
+    #     minComp=normFfactors[swarmClass]['minComp']
+    #     maxComp=normFfactors[swarmClass]['maxComp']
+    #     minCard=normFfactors[swarmClass]['minCard']
+    #     maxCard=normFfactors[swarmClass]['maxCard']
+        
+    #     thisClassPatternIDs = np.where(np.asarray(dataTR.labels)==swarmClass)[0]
+    #     classAwareTR = dataTR[thisClassPatternIDs.tolist()]
+    #     subgraphs = [subgraph_extr.randomExtractDataset(classAwareTR, N_subgraphs) for _ in population[swarmClass]]
+        
+    #     minComp=[normFfactors[swarmClass]['minComp'] for _ in population[swarmClass]]
+    #     maxComp=[normFfactors[swarmClass]['maxComp'] for _ in population[swarmClass]]
+    #     minCard=[normFfactors[swarmClass]['minCard'] for _ in population[swarmClass]]
+    #     maxCard=[normFfactors[swarmClass]['maxCard'] for _ in population[swarmClass]]
 
-        thisClassPatternIDs = np.where(np.asarray(dataTR.labels)==swarmClass)[0]
-        classAwareTR = dataTR[thisClassPatternIDs.tolist()]
-        ##
-        if DEBUG_FIXSUBGRAPH:
-            subgraphsByclass[swarmClass] = subgraph_extr.randomExtractDataset(classAwareTR, N_subgraphs)
-            subgraphs = [subgraphsByclass[swarmClass] for _ in population[swarmClass]]
-        else:
-            subgraphs = [subgraph_extr.randomExtractDataset(classAwareTR, N_subgraphs) for _ in population[swarmClass]]
-        ##
+    #     fitnesses,symbols,minCard,maxCard,minComp,maxComp = zip(*toolbox.map(toolbox.evaluate, zip(population[swarmClass],subgraphs,minComp,maxComp,minCard,maxCard)))
 
-        invalid_ind = [ind for ind in population[swarmClass] if not ind.fitness.valid]
-        fitnesses,symbols = zip(*toolbox.map(toolbox.evaluate, zip(invalid_ind,subgraphs)))
-
-        for ind, fit in zip(invalid_ind, fitnesses):
-            ind.fitness.values = fit
+    #     normFfactors[swarmClass]['minComp']=min(minComp)
+    #     normFfactors[swarmClass]['maxComp']=max(maxComp)
+    #     normFfactors[swarmClass]['minCard']=min(minCard)
+    #     normFfactors[swarmClass]['maxCard']=max(maxCard)
+        
 
     #Log book
     LogAgents = {gen: {thisClass:[] for thisClass in classes} for gen in range(ngen+1)}
     LogPerf = {thisClass:[] for thisClass in classes}
-
+    
     # Begin the generational process   
     ClassAlphabets={thisClass:[] for thisClass in classes}
-    for gen in range(1, ngen + 1):
+    for gen in range(0, ngen):
         
             print("Generation: {}".format(gen))
             
             for swarmClass in classes:
                 
                 print("############")
-                # Vary the population
-                offspring = varOr(population[swarmClass], toolbox, lambda_, cxpb, mutpb)
-        
+                #Generate the offspring: mutation OR crossover OR reproduce and individual as it is
+                #offspring = eabc_Nested.varOr(population[swarmClass], toolbox, lambda_, cxpb, mutpb)
+                offspring = []
+                if gen > 0:
+                    offspring = toolbox.varOr(population=population[swarmClass],toolbox=toolbox,lambda_=lambda_, idHistory=IDagentsHistory[swarmClass])
+                
                 #Selecting data for this swarm               
                 thisClassPatternIDs = np.where(np.asarray(dataTR.labels)==swarmClass)[0]
                 classAwareTR = dataTR[thisClassPatternIDs.tolist()]
                 
-                #Select both old and offspring for evaluation
+                #Select both old and offspring for evaluation in order to run agents
                 pop = population[swarmClass] + offspring
-                invalid_ind = pop
+
                 #Select pop number of buckets to be assigned to agents
-                if DEBUG_FIXSUBGRAPH:
-                    subgraphs = [subgraphsByclass[swarmClass] for _ in pop]
-                else:
-                    subgraphs = [subgraph_extr.randomExtractDataset(classAwareTR, N_subgraphs) for _ in pop]
+                subgraphs = [subgraph_extr.randomExtractDataset(classAwareTR, N_subgraphs) for _ in pop]
+                
 
                 #Run individual and return the partial fitness comp+card
                 fitnesses,alphabets = zip(*toolbox.map(toolbox.evaluate, zip(pop,subgraphs)))
-
-                #Generate IDs for agents that pushed symbols in class bucket
-                #E.g. idAgents       [ 0   0    1   1  1     2    -  3    .... ]
-                #     alphabets      [[s1 s2] [ s3  s4 s5]  [s6] []  [s7] .... ]
-                #Identify the agent that push s_i symbol
-                idAgents=[]
-                for i in range(len(pop)):
-                    if alphabets[i]:
-                        for _ in range(len(alphabets[i])):
-                            idAgents.append(i)
                 
+                #Store agent number of symbols and fix replicated individuals alphabet size issue
+                ids = np.asarray([ind.ID for ind in pop])                
+                uniqueIds, indices, count = np.unique(ids,return_inverse=True,return_counts=True)
+                for i in range(len(uniqueIds)):
+                    values = [len(alphabets[j]) for j in np.where(indices==i)[0]]
+                    for j in np.where(indices==i)[0]:
+                        pop[j].alphabetSize = max(values)
+    
+                    
                 #Concatenate symbols if not empty
                 alphabets = sum(alphabets,[])
                 
+                #
+#                 from scipy.spatial.distance import squareform
+# #                if gen>0:
+#                 metrics = np.zeros((len(alphabets),6))
+#                 for i,sym in enumerate(alphabets):
+#                     d = sym._DissimilarityMeasure
+#                     nodeP = [d.nodeInsWeight, d.nodeDelWeight, d.nodeSubWeight]
+#                     edgeP = [d.edgeInsWeight, d.edgeDelWeight, d.edgeSubWeight]
+#                     params = nodeP+edgeP
+#                     metrics[i] = np.asarray(params,dtype=float)
+#                 X = squareform(pdist(metrics))/np.sqrt(len(params))
+#                 clustering =  DBSCAN(eps=0.1, min_samples=2,metric="precomputed")
+#                 clustering.fit(X)
+#                 clustRes = clustering.labels_
+#                 mergedClust =[]
+#                 for label in clustRes:
+#                     if label >= 0:
+#                         symbolsClust = np.where(clustRes==label)[0].tolist()
+#                         graphs,diss  = zip(*[[alphabets[i].representative,alphabets[i].dissimilarity] for i in symbolsClust])
+#                         M = squareform(diss[0].pdist(graphs))
+#                         clustering =  DBSCAN(eps=0.2, min_samples=2,metric="precomputed")
+#                         clustering.fit(M)
+#                         labRes = clustering.labels_
+#                         for l in labRes:
+#                             cl = np.where(labRes == l)[0]
+#                             dissCl = M[np.ix_(cl, cl)]
+#                             s = cl[np.argmin(np.sum(dissCl))]
+#                             mergedClust.append(s)
+
+#                 alphabets = [alphabets[i] for i in mergedClust]
+                #
+                    
                 #Restart with previous symbols
                 thisGenClassAlphabet = alphabets + ClassAlphabets[swarmClass]
                 
                 embeddingStrategy = SymbolicHistogram(isSymbolDiss=True,isParallel=True)
+#                embeddingStrategy = SymbolicHistogram(isSymbolDiss=True,isParallel=False)
+
         
                 #Embedding with current symbols
                 embeddingStrategy.getSet(expTRSet, thisGenClassAlphabet)
@@ -356,8 +201,7 @@ def main(N_subgraphs,path,name,mu,lambda_,ngen,maxorder):
                 sensitivity = tp / (tp + fn)
                 specificity = tn / (tn + fp)
                 J = sensitivity + specificity - 1
-                J = (J + 1) / 2
-                #error_rate = 1 - J          
+                J = (J + 1) / 2       
                 print("Informedness {} - class {} - alphabet = {}".format(J, swarmClass,len(thisGenClassAlphabet)))
                 
                 #Feature Selection                  
@@ -374,6 +218,7 @@ def main(N_subgraphs,path,name,mu,lambda_,ngen,maxorder):
                                                                  mutation=MUTPB_GA2, 
                                                                  workers=-1, 
                                                                  polish=False, 
+                                                                 seed = seed,
                                                                  updating='deferred')
                 best_GA2 = [round(i) for i in TuningResults_GA2.x]
                 print("Selected {}/{} feature".format(sum(np.asarray(best_GA2)==1), len(best_GA2)))
@@ -391,39 +236,89 @@ def main(N_subgraphs,path,name,mu,lambda_,ngen,maxorder):
                 
                 print("Informedness with selected symbols: {}".format(J))
 
+                #Update class alphabet
+                ClassAlphabets[swarmClass]= np.asarray(thisGenClassAlphabet,dtype = object)[mask].tolist()
+
                 #Assign the final fitness to agents
                 fitnessesRewarded = list(fitnesses)
                 ##For log
                 rewardLog = []
                 ##
                 for agent in range(len(pop)):
-                    NagentSymb = sum(np.asarray(idAgents)==agent)
-                    indices = np.where(np.asarray(idAgents)==agent)
-                    NagentSymbolsInModel= sum(mask[indices])
+                    
+                    agentID = pop[agent].ID
+                    #Count ownership in full alphabet
+                    NagentSymbolsPrev = len(list(filter(lambda sym: sym.owner==agentID,thisGenClassAlphabet)))                                         
+                    #Count ownership in shrinked alphabet
+                    NagentSymbolsInModel  = len([sym for sym in ClassAlphabets[swarmClass] if sym.owner==agentID])
 
-                    reward = J*NagentSymbolsInModel/NagentSymb if NagentSymb else 0
+                    if DEBUG_FITNESS:
+
+                        alpha = 0.9
+                        alphCard = pop[agent].alphabetSize
+                        
+                        reward = alpha*J*NagentSymbolsInModel/NagentSymbolsPrev + (1-alpha)*(1-(alphCard/N_subgraphs)) if alphCard>0 else 0
+                        if reward>1:
+                            print("error")
+                    else:
+                        reward = J*NagentSymbolsInModel/sum(np.asarray(best_GA2)==1)
                     rewardLog.append(reward)
                     
-                    fitnessesRewarded[agent] = 0.5*(fitnesses[agent][0]+reward), #Equal weight
-                    
-                #Update class alphabet
-                ClassAlphabets[swarmClass]= np.asarray(thisGenClassAlphabet,dtype = object)[mask].tolist()
-
-                #invalid ind is a reference to pop
-                for ind, fit in zip(invalid_ind, tuple(fitnessesRewarded)):
-                    ind.fitness.values = fit
-            
-
-                # Select the next generation population for the current swarm
-                population[swarmClass][:] = toolbox.select(pop, mu)
+                    if DEBUG_FITNESS:
+                        fitnessesRewarded[agent] = reward,
+                    else:
+                        
+                        fitnessesRewarded[agent] = 0.5*(fitnesses[agent][0]+reward), #Equal weight
                 
+                
+                if DEBUG_INDOCC:
+                    fitmean = []
+                for ind, fit in zip(pop, fitnessesRewarded):
+                    if DEBUG_INDOCC:
+                        ids = np.asarray([thisInd.ID for thisInd in pop])
+                        fitness = np.asarray(fitnessesRewarded)
+                        indices = np.where(ids == ind.ID)
+                        fit = np.mean(fitness[indices]),
+                    #Assign fitness
+                    ind.fitness.values = fit
+                    if DEBUG_INDOCC:
+                        fitmean.append(fit)
+                
+                #print([[ind.ID,ind.fitness.values] for ind in pop])
+                for ind in pop:
+                    print("{} - {} - Symbols: {} - Fitness: {}".format(ind.ID, ind,ind.alphabetSize, ind.fitness.values))
+                ##           
+                # x = np.asarray([ind.fitness.values[0] for ind in pop])
+                # y = np.asarray([fit[0] for fit in fitmean])
+                # if not np.all(x == y):
+                #     pause = input("Stop Error")
+                #     print("in pop")
+                #     print(np.asarray([ind.fitness.values[0] for ind in pop]))
+                #     pause = input()
+                #     print("fitness list ")
+                #     print(np.asarray([fit[0] for fit in fitmean]))
+                #     #print(np.asarray([fit[0] for fit in fitnesses]))                    
+                #     pause = input()
+                #     print(np.where(x!=y))
+                #     pause = input()
+                #     for ind in pop:
+                #         print(ind.ID,ind.fitness.valid)
+                ##
+                
+                # Select the next generation population for the current swarm
+                if gen > 0:
+                    population[swarmClass][:] = toolbox.select(pop, mu)
+                else:
+                    population[swarmClass][:] = pop
                 #Save Informedness for class and gen
                 LogPerf[swarmClass].append([J,sum(np.asarray(best_GA2)==1),len(best_GA2)])
+                
                 #Save population at g = gen
                 LogAgents[gen][swarmClass].append([pop,fitnesses,rewardLog,fitnessesRewarded])
             
             print("----------------------------")
     
+    print("Test phase")
     #Collect class alphabets and embeddeding TR,VS,TS with concatenated Alphabets
     ALPHABETS=[alphabets for alphabets in ClassAlphabets.values()]   
     ALPHABETS = sum(ALPHABETS,[])
@@ -453,7 +348,8 @@ def main(N_subgraphs,path,name,mu,lambda_,ngen,maxorder):
                                                      dataVS.labels),
                                                      maxiter=100, init=DE_Pop, 
                                                      recombination=CXPB_GA2,
-                                                     mutation=MUTPB_GA2, 
+                                                     mutation=MUTPB_GA2,
+                                                     seed = seed,
                                                      workers=-1, 
                                                      polish=False, 
                                                      updating='deferred')
@@ -486,27 +382,133 @@ def main(N_subgraphs,path,name,mu,lambda_,ngen,maxorder):
     return LogAgents,LogPerf,ClassAlphabets,TRMat,VSMat,predictedVSmask,dataVS.labels,TSMat,predictedTS,dataTS.labels,ALPHABETS,ALPHABET,mask
 
 if __name__ == "__main__":
-    
+
+
+    seed = 0
+    random.seed(seed)
+    npRng = np.random.default_rng(seed)
+    # Parameter setup
+    # They should be setted by cmd line
     path = "/home/luca/Documenti/Progetti/E-ABC_v2/eabc_v2/Datasets/IAM/Letter3/"
     name = "LetterH"
-    N_subgraphs = 20
-    ngen = 20
-    mu = 20
-    lambda_=20
-    maxorder = 6
+    #path = "/home/luca/Documenti/Progetti/E-ABC_v2/eabc_v2/Datasets/IAM/GREC/"
+    #name = "GREC"  
+    # path = "/home/luca/Documenti/Progetti/E-ABC_v2/eabc_v2/Datasets/IAM/AIDS/"
+    # name = "AIDS" 
+    N_subgraphs = 100
+    ngen = 10
+    mu = 10
+    lambda_= 50
+    maxorder = 5
+    CXPROB = 0.45
+    MUTPROB = 0.45
+    INDCXP = 0.3
+    INDMUTP = 0.3
+    TOURNSIZE = 3
+    QMAX = 500
+
+
+    ###Preprocessing
+    print("Loading...")    
     
-    LogAgents, LogPerf,ClassAlphabets,TRMat,VSMat,predictedVSmask,VSlabels,TSMat,predictedTS,TSlabels, ALPHABETS,ALPHABET,mask = main(N_subgraphs,
-                                                                                                                                      path,
-                                                                                                                                      name,
+    if name in ['LetterH', 'LetterM','LetterL']:
+        parser = Letter.parser
+    elif name == 'GREC':
+        parser = GREC.parser
+    elif name == 'AIDS':
+        parser = AIDS.parser
+    else:
+        raise FileNotFoundError
+        
+    
+    IAMreadergraph = partial(IAMreader,parser)
+    rawtr = graph_nxDataset(path+"Training/", name, reader = IAMreadergraph,seed=npRng)[:100]
+    rawvs = graph_nxDataset(path+"Validation/", name, reader = IAMreadergraph,seed = npRng)[:100]
+    rawts = graph_nxDataset(path+"Test/", name, reader = IAMreadergraph,seed = npRng)[:100]
+
+    ####
+    if name in ['LetterH', 'LetterM' ,'LetterL']:  
+        weights = Letter.normalize('coords',rawtr.data,rawvs.data,rawts.data)
+    elif name == 'GREC':
+        weights = GREC.normalize(rawtr.data,rawvs.data,rawts.data)
+    elif name == 'AIDS':
+        weights = AIDS.normalize(rawtr.data,rawvs.data,rawts.data)
+    ###
+    
+    #Slightly different from dataset used in pygralg
+    dataTR = rawtr
+    dataVS = rawvs
+    dataTS = rawts
+    
+    #Create type for the problem
+    if name == 'GREC':
+        Dissimilarity = GREC.GRECdiss
+    elif name in ['LetterH' , 'LetterM' , 'LetterL']:
+        Dissimilarity = Letter.LETTERdiss
+    elif name == 'AIDS':
+        Dissimilarity = AIDS.AIDSdiss
+
+
+    #Maximizing
+    creator.create("FitnessMax", base.Fitness, weights=(1.0,))
+    creator.create("Agent", list, fitness=creator.FitnessMax, ID = None, alphabetSize = None)
+    
+    toolbox = base.Toolbox()
+    
+    #Multiprocessing map
+    # pool = multiprocessing.Pool()
+    # toolbox.register("map", pool.map)
+
+    eabc_Nested = eabc_Nested(DissimilarityClass=Dissimilarity,problemName = name,DissNormFactors=weights)
+    
+    #Q scaling
+    scale_factor = len(np.unique(dataTR.labels,dataVS.labels,dataTS.labels)[0])
+    scaledQ = round(QMAX/scale_factor)
+    
+    toolbox.register("attr_genes", eabc_Nested.gene_bound,QMAX = scaledQ) 
+    toolbox.register("agent", tools.initIterate,
+                    creator.Agent, toolbox.attr_genes)
+    
+    
+    toolbox.register("population", eabc_Nested.initAgents, toolbox.agent,n=100)  
+    toolbox.register("evaluate", eabc_Nested.fitness)
+    toolbox.register("mate", eabc_Nested.customXover,indpb=INDCXP)
+    #Setup mutation
+    toolbox.register("mutate", eabc_Nested.customMutation,mu = 0, indpb=INDMUTP)
+    toolbox.register("select", tools.selTournament, tournsize=TOURNSIZE)
+    toolbox.register("varOr",eabc_Nested.varOr,cxpb= CXPROB, mutpb=MUTPROB)
+    
+    #Decorator bound    
+    toolbox.decorate("mate", eabc_Nested.checkBounds(scaledQ))
+    toolbox.decorate("mutate", eabc_Nested.checkBounds(scaledQ))
+    
+    LogAgents, LogPerf,ClassAlphabets,TRMat,VSMat,predictedVSmask,VSlabels,TSMat,predictedTS,TSlabels, ALPHABETS,ALPHABET,mask = main(dataTR,
+                                                                                                                                      dataVS,
+                                                                                                                                      dataTS,
+                                                                                                                                      N_subgraphs,
                                                                                                                                       mu,
                                                                                                                                       lambda_,
                                                                                                                                       ngen,
-                                                                                                                                      maxorder)
+                                                                                                                                      maxorder,
+                                                                                                                                      CXPROB,
+                                                                                                                                      MUTPROB,
+                                                                                                                                      npRng)
     
-    pickle.dump({'Agents':LogAgents,
+    
+
+    pickle.dump({'Name': name,
+                 'Path': path,
+                 'CrossOverPr':CXPROB,
+                 'MutationPr':MUTPROB,
+                 'IndXoverPr':INDCXP,
+                 'IndMutPr':INDMUTP,
+                 'TournamentSize':TOURNSIZE,
+                 'Seed':seed,
+                'Agents':LogAgents,
                 'PerformancesTraining':LogPerf,
                 'ClassAlphabets':ClassAlphabets,
                 'TRMat':TRMat,
+                'TRlabels':dataTR.labels,
                 'VSMat':VSMat,
                 'predictedVSmask':predictedVSmask,
                 'VSlabels':VSlabels,
@@ -516,7 +518,6 @@ if __name__ == "__main__":
                 'ALPHABETS':ALPHABETS,
                 'ALPHABET':ALPHABET,
                 'mask':mask,
-                'name':name,
                 'N_subgraphs':N_subgraphs,
                 'N_gen':ngen,
                 'Mu':mu,

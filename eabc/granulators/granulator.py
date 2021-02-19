@@ -11,7 +11,8 @@ class Granulator:
         self._Fweight = eta
         
         self._symbols = []
-    
+
+        
     @property
     def symbol_thr(self):
         return self._Fsym_threshold
@@ -45,15 +46,21 @@ class Granulator:
           
     #        
     def _evaluateF(self, normComp, normCard):
-        #*0.1 normCard
+        #*0.1 normCard manually scale card for being comparable with comp (dirty)
         if 0<=normComp<=1 and 0<normCard<=1:
-             F = self._Fweight*normCard*0.1 + (1-self._Fweight)*normComp
+              F = self._Fweight*normCard*0.1 + (1-self._Fweight)*normComp
         else:
-             raise ValueError
+              raise ValueError
         return F
-        #     print("Warning, Invalid values for F evaluation: cardinality =  {}, compactness = {}"
-        #           .format(self._Cardinality,self._Compactness))
-        #     F = float('nan')        
-        # return F
         
+    def _removeSingularity(self,clustersLabels,reprElems,Dataset):
         
+        try:
+            clustersLabels,reprElems = zip(*filter(lambda x: not(len(x[0])==1 or
+                                               len(x[0])/len(Dataset.data)==1 or x[1]._SOD==0), zip(clustersLabels,reprElems))) 
+        #No elements to unpack, all clusters are discarded
+        except ValueError:
+            clustersLabels = []
+            reprElems = []
+            
+        return clustersLabels,reprElems

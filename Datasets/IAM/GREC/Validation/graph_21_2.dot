@@ -1,0 +1,29 @@
+graph "sampletest150-mod5_image2.bmp" {
+	0	 [type=endpoint,
+		x=523,
+		y=523];
+	2	 [type=corner,
+		x=538,
+		y=458];
+	0 -- 2	 [angle0="-1.34",
+		frequency=1,
+		type0=line];
+	1	 [type=intersection,
+		x=469,
+		y="-17"];
+	1 -- 2	 [angle0="1.43",
+		frequency=1,
+		type0=line];
+	3	 [type=endpoint,
+		x=28,
+		y=527];
+	1 -- 3	 [angle0="916.47",
+		frequency=1,
+		type0=arc];
+	4	 [type=endpoint,
+		x=543,
+		y=35];
+	1 -- 4	 [angle0=".61",
+		frequency=1,
+		type0=line];
+}

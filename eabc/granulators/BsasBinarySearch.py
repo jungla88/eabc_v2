@@ -5,12 +5,11 @@ from eabc.granulators import Granule
 from eabc.extras import BSAS
 from eabc.extras.BinarySearch import BinarySearch
 
-import numpy as np
-
-
+from kneed import KneeLocator
 
 class BsasBinarySearch(Granulator):
     
+    #TEST: Trying normalization of F value fo min-max approach
     def __init__(self,DistanceFunction,clusterRepresentative,tStep=0.1,Qmax=100):
         
         self._distanceFunction = DistanceFunction
@@ -40,16 +39,27 @@ class BsasBinarySearch(Granulator):
         partitions = BinarySearch(Dataset.data,self._method,self._tStep)
         
         #Select partition based on persistence
-        gap = 0
-        bestP = None
-        for i in range(len(partitions)-1):                        
-            theta = sorted(list(partitions.keys()))[i]
-            thetaNext = sorted(list(partitions.keys()))[i+1]            
-            gapTemp = thetaNext - theta            
-            if gapTemp > gap:
-                bestP = i
+        # gap = 0
+        # bestP = None
+        # for i in range(len(partitions)-1):                        
+        #     theta = sorted(list(partitions.keys()))[i]
+        #     thetaNext = sorted(list(partitions.keys()))[i+1]            
+        #     gapTemp = thetaNext - theta            
+        #     if gapTemp > gap:
+        #         bestP = i
+        #theta = sorted(list(partitions.keys()))[bestP]
         
-        theta = sorted(list(partitions.keys()))[bestP]
+        x = sorted([t for t in partitions.keys()])
+        y = sorted([len(cluster[1]) for cluster in partitions.values()],reverse = True)
+        print(x,y)
+        kl = KneeLocator(x,y,curve='convex',direction = 'decreasing',S = 2)
+        theta= kl.knee
+        if kl.knee:
+            theta = kl.knee
+        else:
+            #No symbol produced if knee is not found
+            return
+            
         
         clustersLabels, reprElems = partitions[theta][0],partitions[theta][1]
 
@@ -69,15 +79,16 @@ class BsasBinarySearch(Granulator):
         #         newGr = Granule(repres._representativeElem,self._distanceFunction,F,normalizeCard[i],normalizeComp[i])
         #         super(BsasBinarySearch,self)._addSymbol(newGr)
         
+        # singleton or universe clusters        
+        clustersLabels,reprElems = super(BsasBinarySearch,self)._removeSingularity(clustersLabels,reprElems,Dataset)
+            
         nClust = len(reprElems)
         #Evaluation - Lower is better
-        normalizeCard = [1-(len(clustersLabels[l])/len(Dataset.data)) 
-                          if len(clustersLabels)>1 else 1 for l in range(nClust)]
-        normalizeComp = [reprElems[l]._SOD/(len(clustersLabels[l])-1) 
-                          if len(clustersLabels[l])>1 else 1 for l in range(nClust)]
-        
+        normalizeCard = [1-(len(clustersLabels[l])/len(Dataset.data)) for l in range(nClust)]
+        normalizeComp = [reprElems[l]._SOD/(len(clustersLabels[l])-1) for l in range(nClust)]
+
         for i,repres in enumerate(reprElems):
+            
             F = super(BsasBinarySearch,self)._evaluateF(normalizeComp[i],normalizeCard[i])
             newGr = Granule(repres._representativeElem,self._distanceFunction,F,normalizeCard[i],normalizeComp[i])
             super(BsasBinarySearch,self)._addSymbol(newGr)
-    

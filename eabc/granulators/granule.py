@@ -23,6 +23,9 @@ class Granule:
         self._AvgDispersion = avgDispersion 
         self._epsilon = epsilon
         
+        #Added for store agent property
+        self._ownerID = None
+        
         #Better evaluate F externally?
 #        self._Fweight = eta
         
@@ -98,7 +101,12 @@ class Granule:
     def dissimilarity(self,obj):
         if obj:
             self._DissimilarityMeasure = obj
-    
+    @property
+    def owner(self):
+        return self._ownerID
+    @owner.setter
+    def owner(self,val):
+        self._ownerID = val
     # @property
     # def effectiveRadius(self):
     #     return self._effectiveRadius
