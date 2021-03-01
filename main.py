@@ -5,12 +5,10 @@ import random
 import pickle
 import multiprocessing
 from functools import partial
+import copy
 
 from sklearn.neighbors import KNeighborsClassifier as KNN
-from sklearn.cluster import DBSCAN
-from sklearn.metrics import confusion_matrix
-from scipy.optimize import differential_evolution
-from scipy.spatial.distance import pdist,squareform
+from sklearn.metrics import confusion_matrix,balanced_accuracy_score
 
 from Datasets.IAM import IamDotLoader
 from Datasets.IAM import Letter,GREC,AIDS
@@ -18,8 +16,9 @@ from eabc.datasets import graph_nxDataset
 from eabc.extractors import Extractor
 from eabc.extractors import randomwalk_restart
 from eabc.embeddings import SymbolicHistogram
-from eabc.extras.featureSelDE import FSsetup_DE,FSfitness_DE 
 from eabc.environments.nestedFS import eabc_Nested
+from eabc.extras import eabc_modelGen
+from eabc.extras.rewardingSystem import applyAgentReward,applySymbolReward
 
 
 def IAMreader(parser,path):
@@ -49,51 +48,30 @@ def main(dataTR,dataVS,dataTS,N_subgraphs,mu,lambda_,ngen,maxorder,cxpb,mutpb,se
     expTRSet = subgraph_extr.decomposeGraphDataset(dataTR,maxOrder= maxorder)
     expVSSet = subgraph_extr.decomposeGraphDataset(dataVS,maxOrder= maxorder)
     expTSSet = subgraph_extr.decomposeGraphDataset(dataTS,maxOrder= maxorder)
-        
+    
+    #Not here
+    model_generator = eabc_modelGen(seed=seed)
+    
     ##################
-    # Evaluate the individuals with an invalid fitness
-    DEBUG_FITNESS = True
-    DEBUG_INDOCC = True
-    print("Initializing populations...")
-    if DEBUG_FITNESS:
-        print("DEBUG FITNESS TRUE")
-    if DEBUG_INDOCC:
-        print("DEBUG REPEATED IND TRUE")        
+ 
     classes= dataTR.unique_labels
     #Initialize a dict of swarms - {key:label - value:deap popolution}
     population = {thisClass:toolbox.population(n=mu) for thisClass in classes}
     IDagentsHistory = {thisClass:[ind.ID for ind in population[thisClass]] for thisClass in classes}
+
+    bucketsCard = 20 #to be setted by cmd line
+    numModel = 4
     
-    # for swarmClass in classes:
-        
-    #     minComp=normFfactors[swarmClass]['minComp']
-    #     maxComp=normFfactors[swarmClass]['maxComp']
-    #     minCard=normFfactors[swarmClass]['minCard']
-    #     maxCard=normFfactors[swarmClass]['maxCard']
-        
-    #     thisClassPatternIDs = np.where(np.asarray(dataTR.labels)==swarmClass)[0]
-    #     classAwareTR = dataTR[thisClassPatternIDs.tolist()]
-    #     subgraphs = [subgraph_extr.randomExtractDataset(classAwareTR, N_subgraphs) for _ in population[swarmClass]]
-        
-    #     minComp=[normFfactors[swarmClass]['minComp'] for _ in population[swarmClass]]
-    #     maxComp=[normFfactors[swarmClass]['maxComp'] for _ in population[swarmClass]]
-    #     minCard=[normFfactors[swarmClass]['minCard'] for _ in population[swarmClass]]
-    #     maxCard=[normFfactors[swarmClass]['maxCard'] for _ in population[swarmClass]]
-
-    #     fitnesses,symbols,minCard,maxCard,minComp,maxComp = zip(*toolbox.map(toolbox.evaluate, zip(population[swarmClass],subgraphs,minComp,maxComp,minCard,maxCard)))
-
-    #     normFfactors[swarmClass]['minComp']=min(minComp)
-    #     normFfactors[swarmClass]['maxComp']=max(maxComp)
-    #     normFfactors[swarmClass]['minCard']=min(minCard)
-    #     normFfactors[swarmClass]['maxCard']=max(maxCard)
-        
-
     #Log book
     LogAgents = {gen: {thisClass:[] for thisClass in classes} for gen in range(ngen+1)}
     LogPerf = {thisClass:[] for thisClass in classes}
     
-    # Begin the generational process   
     ClassAlphabets={thisClass:[] for thisClass in classes}
+    previousModels = []
+    previousModelsPerf = []
+
+
+    #
     for gen in range(0, ngen):
         
             print("Generation: {}".format(gen))
@@ -102,7 +80,6 @@ def main(dataTR,dataVS,dataTS,N_subgraphs,mu,lambda_,ngen,maxorder,cxpb,mutpb,se
                 
                 print("############")
                 #Generate the offspring: mutation OR crossover OR reproduce and individual as it is
-                #offspring = eabc_Nested.varOr(population[swarmClass], toolbox, lambda_, cxpb, mutpb)
                 offspring = []
                 if gen > 0:
                     offspring = toolbox.varOr(population=population[swarmClass],toolbox=toolbox,lambda_=lambda_, idHistory=IDagentsHistory[swarmClass])
@@ -112,72 +89,55 @@ def main(dataTR,dataVS,dataTS,N_subgraphs,mu,lambda_,ngen,maxorder,cxpb,mutpb,se
                 classAwareTR = dataTR[thisClassPatternIDs.tolist()]
                 
                 #Select both old and offspring for evaluation in order to run agents
-                pop = population[swarmClass] + offspring
+                population[swarmClass] = population[swarmClass] + offspring
 
                 #Select pop number of buckets to be assigned to agents
-                subgraphs = [subgraph_extr.randomExtractDataset(classAwareTR, N_subgraphs) for _ in pop]
+                subgraphs = [subgraph_extr.randomExtractDataset(classAwareTR, N_subgraphs) for _ in population[swarmClass]]
                 
-
                 #Run individual and return the partial fitness comp+card
-                fitnesses,alphabets = zip(*toolbox.map(toolbox.evaluate, zip(pop,subgraphs)))
+                internalClustEval,alphabets = zip(*toolbox.map(toolbox.evaluate, zip(population[swarmClass],subgraphs)))
                 
-                #Store agent number of symbols and fix replicated individuals alphabet size issue
-                ids = np.asarray([ind.ID for ind in pop])                
-                uniqueIds, indices, count = np.unique(ids,return_inverse=True,return_counts=True)
-                for i in range(len(uniqueIds)):
-                    values = [len(alphabets[j]) for j in np.where(indices==i)[0]]
-                    for j in np.where(indices==i)[0]:
-                        pop[j].alphabetSize = max(values)
-    
-                    
+                #processing alphabets ids and ownership
+                for agent,alphabet in zip(population[swarmClass],alphabets):
+                    idx = agent.ID
+                    for s in alphabet:
+                        s.owner = idx
+                        s.class_ = swarmClass
+
                 #Concatenate symbols if not empty
-                alphabets = sum(alphabets,[])
-                
-                #
-#                 from scipy.spatial.distance import squareform
-# #                if gen>0:
-#                 metrics = np.zeros((len(alphabets),6))
-#                 for i,sym in enumerate(alphabets):
-#                     d = sym._DissimilarityMeasure
-#                     nodeP = [d.nodeInsWeight, d.nodeDelWeight, d.nodeSubWeight]
-#                     edgeP = [d.edgeInsWeight, d.edgeDelWeight, d.edgeSubWeight]
-#                     params = nodeP+edgeP
-#                     metrics[i] = np.asarray(params,dtype=float)
-#                 X = squareform(pdist(metrics))/np.sqrt(len(params))
-#                 clustering =  DBSCAN(eps=0.1, min_samples=2,metric="precomputed")
-#                 clustering.fit(X)
-#                 clustRes = clustering.labels_
-#                 mergedClust =[]
-#                 for label in clustRes:
-#                     if label >= 0:
-#                         symbolsClust = np.where(clustRes==label)[0].tolist()
-#                         graphs,diss  = zip(*[[alphabets[i].representative,alphabets[i].dissimilarity] for i in symbolsClust])
-#                         M = squareform(diss[0].pdist(graphs))
-#                         clustering =  DBSCAN(eps=0.2, min_samples=2,metric="precomputed")
-#                         clustering.fit(M)
-#                         labRes = clustering.labels_
-#                         for l in labRes:
-#                             cl = np.where(labRes == l)[0]
-#                             dissCl = M[np.ix_(cl, cl)]
-#                             s = cl[np.argmin(np.sum(dissCl))]
-#                             mergedClust.append(s)
+                alphabet = sum(alphabets,[])
 
-#                 alphabets = [alphabets[i] for i in mergedClust]
-                #
-                    
-                #Restart with previous symbols
-                thisGenClassAlphabet = alphabets + ClassAlphabets[swarmClass]
-                
-                embeddingStrategy = SymbolicHistogram(isSymbolDiss=True,isParallel=True)
-#                embeddingStrategy = SymbolicHistogram(isSymbolDiss=True,isParallel=False)
+                #Temporary save overlength alphabet
+                ClassAlphabets[swarmClass] = ClassAlphabets[swarmClass] + alphabet
 
-        
+            #Merging all class buckets
+            mergedClassAlphabets = sum(ClassAlphabets.values(),[])
+
+            #Models creation stage
+            
+#            randomGeneratedModels = model_generator.createFromSymbols(mergedClassAlphabets)
+            randomGeneratedModels = model_generator.createFromSymbols(ClassAlphabets)
+            #Create new model from the current and previous generation
+            recombinedModels = model_generator.createFromModels(randomGeneratedModels+previousModels)
+            
+            #Merged random models plus recombined models
+            candidateModels = randomGeneratedModels + recombinedModels
+
+            #Evaluating model performances
+            modelPerformances = np.zeros((len(candidateModels)))
+            
+            #Save the trained classifier?
+            classificationModel = np.empty((len(candidateModels)),dtype=object) 
+            for i,model in enumerate(candidateModels):
+                
+                embeddingStrategy = SymbolicHistogram(isSymbolDiss=True,isParallel=False)
+                
                 #Embedding with current symbols
-                embeddingStrategy.getSet(expTRSet, thisGenClassAlphabet)
+                embeddingStrategy.getSet(expTRSet, model)
                 TRembeddingMatrix = np.asarray(embeddingStrategy._embeddedSet)
                 TRpatternID = embeddingStrategy._embeddedIDs
         
-                embeddingStrategy.getSet(expVSSet, thisGenClassAlphabet)
+                embeddingStrategy.getSet(expVSSet, model)
                 VSembeddingMatrix = np.asarray(embeddingStrategy._embeddedSet)
                 VSpatternID = embeddingStrategy._embeddedIDs        
         
@@ -187,208 +147,126 @@ def main(dataTR,dataVS,dataTS,N_subgraphs,mu,lambda_,ngen,maxorder,cxpb,mutpb,se
                 TRMat = TRembeddingMatrix[TRorderID,:]
                 VSMat = VSembeddingMatrix[VSorderID,:]        
                 
-                #Relabeling swarmClass = 1 others = 0
-                TRlabels = (np.asarray(dataTR.labels)==swarmClass).astype(int)
-                VSlabels= (np.asarray(dataVS.labels)==swarmClass).astype(int)
-                
                 classifier = KNN()
-                classifier.fit(TRMat,TRlabels)
+                classifier.fit(TRMat,dataTR.labels)
                 predictedVSLabels = classifier.predict(VSMat)
                      
+                J = balanced_accuracy_score(dataVS.labels,predictedVSLabels)
+                
+                modelSize = len(model)
+                #
+                alpha = 0.99 #To be setted on cmdline
+                #
+                modelPerformances[i] = alpha*J + (1-alpha)*(1-(modelSize/len(mergedClassAlphabets))) 
+                ####
+                classificationModel[i] = classifier
 
-                print("{},{}".format(len(VSlabels),len(predictedVSLabels)))
-                tn, fp, fn, tp = confusion_matrix(VSlabels, predictedVSLabels).ravel()
-                sensitivity = tp / (tp + fn)
-                specificity = tn / (tn + fp)
-                J = sensitivity + specificity - 1
-                J = (J + 1) / 2       
-                print("Informedness {} - class {} - alphabet = {}".format(J, swarmClass,len(thisGenClassAlphabet)))
-                
-                #Feature Selection                  
-                bounds_GA2, CXPB_GA2, MUTPB_GA2, DE_Pop = FSsetup_DE(len(thisGenClassAlphabet), -1)
-                
-                FS_inforDE= partial(FSfitness_DE,perfMetric = 'informedness')
-                TuningResults_GA2 = differential_evolution(FS_inforDE, bounds_GA2, 
-                                                           args=(TRMat,
-                                                                 VSMat, 
-                                                                 TRlabels, 
-                                                                 VSlabels),
-                                                                 maxiter=100, init=DE_Pop, 
-                                                                 recombination=CXPB_GA2,
-                                                                 mutation=MUTPB_GA2, 
-                                                                 workers=-1, 
-                                                                 polish=False, 
-                                                                 seed = seed,
-                                                                 updating='deferred')
-                best_GA2 = [round(i) for i in TuningResults_GA2.x]
-                print("Selected {}/{} feature".format(sum(np.asarray(best_GA2)==1), len(best_GA2)))
-                
-                #Embedding with best alphabet
-                mask = np.array(best_GA2,dtype=bool)
-                classifier.fit(TRMat[:, mask], TRlabels)
-                predictedVSmask=classifier.predict(VSMat[:, mask])
-                
-                tn, fp, fn, tp = confusion_matrix(VSlabels, predictedVSmask).ravel()
-                sensitivity = tp / (tp + fn)
-                specificity = tn / (tn + fp)
-                J = sensitivity + specificity - 1
-                J = (J + 1) / 2
-                
-                print("Informedness with selected symbols: {}".format(J))
+                print("{},{}".format(len(dataVS.labels),len(predictedVSLabels)))
+                print("Balanced accuracy {} - model perf {} - alphabet = {}".format(J, modelPerformances[i],len(model)))
+            
+            #Join new models with previous models with performances
+            evaluatedModelsPerf= list(zip(candidateModels,modelPerformances)) + list(zip(previousModels,previousModelsPerf))
+            #Sorting and thresholding models by performances
+            models = sorted(evaluatedModelsPerf,key = lambda x:x[1],reverse =True)[:numModel]
+            print("Best K models: {}".format(list(zip(*models))[1]))
 
-                #Update class alphabet
-                ClassAlphabets[swarmClass]= np.asarray(thisGenClassAlphabet,dtype = object)[mask].tolist()
-
-                #Assign the final fitness to agents
-                fitnessesRewarded = list(fitnesses)
-                ##For log
-                rewardLog = []
-                ##
-                for agent in range(len(pop)):
-                    
-                    agentID = pop[agent].ID
-                    #Count ownership in full alphabet
-                    NagentSymbolsPrev = len(list(filter(lambda sym: sym.owner==agentID,thisGenClassAlphabet)))                                         
-                    #Count ownership in shrinked alphabet
-                    NagentSymbolsInModel  = len([sym for sym in ClassAlphabets[swarmClass] if sym.owner==agentID])
-
-                    if DEBUG_FITNESS:
-
-                        alpha = 0.9
-                        alphCard = pop[agent].alphabetSize
-                        
-                        reward = alpha*J*NagentSymbolsInModel/NagentSymbolsPrev + (1-alpha)*(1-(alphCard/N_subgraphs)) if alphCard>0 else 0
-                        if reward>1:
-                            print("error")
-                    else:
-                        reward = J*NagentSymbolsInModel/sum(np.asarray(best_GA2)==1)
-                    rewardLog.append(reward)
-                    
-                    if DEBUG_FITNESS:
-                        fitnessesRewarded[agent] = reward,
-                    else:
-                        
-                        fitnessesRewarded[agent] = 0.5*(fitnesses[agent][0]+reward), #Equal weight
+            #Rewarding stage
+            for swarmClass in classes:
+                #reward symbols
+                applySymbolReward(models)
                 
+                #reward agent
+                applyAgentReward(population[swarmClass],ClassAlphabets[swarmClass])              
                 
-                if DEBUG_INDOCC:
-                    fitmean = []
-                for ind, fit in zip(pop, fitnessesRewarded):
-                    if DEBUG_INDOCC:
-                        ids = np.asarray([thisInd.ID for thisInd in pop])
-                        fitness = np.asarray(fitnessesRewarded)
-                        indices = np.where(ids == ind.ID)
-                        fit = np.mean(fitness[indices]),
-                    #Assign fitness
-                    ind.fitness.values = fit
-                    if DEBUG_INDOCC:
-                        fitmean.append(fit)
-                
-                #print([[ind.ID,ind.fitness.values] for ind in pop])
-                for ind in pop:
-                    print("{} - {} - Symbols: {} - Fitness: {}".format(ind.ID, ind,ind.alphabetSize, ind.fitness.values))
-                ##           
-                # x = np.asarray([ind.fitness.values[0] for ind in pop])
-                # y = np.asarray([fit[0] for fit in fitmean])
-                # if not np.all(x == y):
-                #     pause = input("Stop Error")
-                #     print("in pop")
-                #     print(np.asarray([ind.fitness.values[0] for ind in pop]))
-                #     pause = input()
-                #     print("fitness list ")
-                #     print(np.asarray([fit[0] for fit in fitmean]))
-                #     #print(np.asarray([fit[0] for fit in fitnesses]))                    
-                #     pause = input()
-                #     print(np.where(x!=y))
-                #     pause = input()
-                #     for ind in pop:
-                #         print(ind.ID,ind.fitness.valid)
-                ##
-                
+                # #thresholding alphabets and update
+                ClassAlphabets[swarmClass] = sorted(ClassAlphabets[swarmClass],key=lambda x: x.quality,reverse = True)[:bucketsCard]                  
+                          
                 # Select the next generation population for the current swarm
                 if gen > 0:
-                    population[swarmClass][:] = toolbox.select(pop, mu)
-                else:
-                    population[swarmClass][:] = pop
-                #Save Informedness for class and gen
-                LogPerf[swarmClass].append([J,sum(np.asarray(best_GA2)==1),len(best_GA2)])
+                    population[swarmClass][:] = toolbox.select(population[swarmClass], mu)
+                # else:
+                #     population[swarmClass][:] = pop
+#                 #Save Informedness for class and gen
+#                 LogPerf[swarmClass].append([J,sum(np.asarray(best_GA2)==1),len(best_GA2)])
                 
-                #Save population at g = gen
-                LogAgents[gen][swarmClass].append([pop,fitnesses,rewardLog,fitnessesRewarded])
-            
+#                 #Save population at g = gen
+#                 LogAgents[gen][swarmClass].append([pop,fitnesses,rewardLog,fitnessesRewarded])
+
+            previousModels = copy.deepcopy(list(zip(*models))[0])
+            previousModelsPerf = copy.deepcopy(list(zip(*models))[1])                        
             print("----------------------------")
     
     print("Test phase")
     #Collect class alphabets and embeddeding TR,VS,TS with concatenated Alphabets
-    ALPHABETS=[alphabets for alphabets in ClassAlphabets.values()]   
-    ALPHABETS = sum(ALPHABETS,[])
+    # ALPHABETS=[alphabets for alphabets in ClassAlphabets.values()]   
+    # ALPHABETS = sum(ALPHABETS,[])
     
-    embeddingStrategy.getSet(expTRSet, ALPHABETS)
-    TRembeddingMatrix = np.asarray(embeddingStrategy._embeddedSet)
-    TRpatternID = embeddingStrategy._embeddedIDs
+    # embeddingStrategy.getSet(expTRSet, ALPHABETS)
+    # TRembeddingMatrix = np.asarray(embeddingStrategy._embeddedSet)
+    # TRpatternID = embeddingStrategy._embeddedIDs
 
-    embeddingStrategy.getSet(expVSSet, ALPHABETS)
-    VSembeddingMatrix = np.asarray(embeddingStrategy._embeddedSet)
-    VSpatternID = embeddingStrategy._embeddedIDs
+    # embeddingStrategy.getSet(expVSSet, ALPHABETS)
+    # VSembeddingMatrix = np.asarray(embeddingStrategy._embeddedSet)
+    # VSpatternID = embeddingStrategy._embeddedIDs
 
-    #Resorting matrix for consistency with dataset        
-    TRorderID = np.asarray([TRpatternID.index(x) for x in dataTR.indices])
-    VSorderID = np.asarray([VSpatternID.index(x) for x in dataVS.indices])   
+    # #Resorting matrix for consistency with dataset        
+    # TRorderID = np.asarray([TRpatternID.index(x) for x in dataTR.indices])
+    # VSorderID = np.asarray([VSpatternID.index(x) for x in dataVS.indices])   
 
-    TRMat = TRembeddingMatrix[TRorderID,:]
-    VSMat = VSembeddingMatrix[VSorderID,:]        
+    # TRMat = TRembeddingMatrix[TRorderID,:]
+    # VSMat = VSembeddingMatrix[VSorderID,:]        
 
-    #Feature Selection                  
-    bounds_GA2, CXPB_GA2, MUTPB_GA2, DE_Pop = FSsetup_DE(len(ALPHABETS), -1)
-    FS_accDE= partial(FSfitness_DE,perfMetric = 'accuracy')
-    TuningResults_GA2 = differential_evolution(FS_accDE, bounds_GA2, 
-                                               args=(TRMat,
-                                                     VSMat, 
-                                                     dataTR.labels, 
-                                                     dataVS.labels),
-                                                     maxiter=100, init=DE_Pop, 
-                                                     recombination=CXPB_GA2,
-                                                     mutation=MUTPB_GA2,
-                                                     seed = seed,
-                                                     workers=-1, 
-                                                     polish=False, 
-                                                     updating='deferred')
+    # #Feature Selection                  
+    # bounds_GA2, CXPB_GA2, MUTPB_GA2, DE_Pop = FSsetup_DE(len(ALPHABETS), -1)
+    # FS_accDE= partial(FSfitness_DE,perfMetric = 'accuracy')
+    # TuningResults_GA2 = differential_evolution(FS_accDE, bounds_GA2, 
+    #                                            args=(TRMat,
+    #                                                  VSMat, 
+    #                                                  dataTR.labels, 
+    #                                                  dataVS.labels),
+    #                                                  maxiter=100, init=DE_Pop, 
+    #                                                  recombination=CXPB_GA2,
+    #                                                  mutation=MUTPB_GA2,
+    #                                                  seed = seed,
+    #                                                  workers=-1, 
+    #                                                  polish=False, 
+    #                                                  updating='deferred')
     
-    best_GA2 = [round(i) for i in TuningResults_GA2.x]
-    print("Selected {}/{} feature".format(sum(np.asarray(best_GA2)==1), len(best_GA2)))
+    # best_GA2 = [round(i) for i in TuningResults_GA2.x]
+    # print("Selected {}/{} feature".format(sum(np.asarray(best_GA2)==1), len(best_GA2)))
     
-    #Embedding with best alphabet
-    mask = np.array(best_GA2,dtype=bool)
-    classifier = KNN()
-    classifier.fit(TRMat[:, mask], dataTR.labels)
-    predictedVSmask=classifier.predict(VSMat[:, mask])
+    # #Embedding with best alphabet
+    # mask = np.array(best_GA2,dtype=bool)
+    # classifier = KNN()
+    # classifier.fit(TRMat[:, mask], dataTR.labels)
+    # predictedVSmask=classifier.predict(VSMat[:, mask])
     
-    accuracyVS = sum(predictedVSmask==np.asarray(dataVS.labels))/len(dataVS.labels)
-    print("Accuracy on VS with global alphabet: {}".format(accuracyVS))
+    # accuracyVS = sum(predictedVSmask==np.asarray(dataVS.labels))/len(dataVS.labels)
+    # print("Accuracy on VS with global alphabet: {}".format(accuracyVS))
 
-    #Embedding TS with best alphabet
-    ALPHABET = np.asarray(ALPHABETS,dtype = object)[mask].tolist()
-    embeddingStrategy.getSet(expTSSet, ALPHABET)
-    TSembeddingMatrix = np.asarray(embeddingStrategy._embeddedSet)
-    TSpatternID = embeddingStrategy._embeddedIDs   
-    TSorderID = np.asarray([TSpatternID.index(x) for x in dataTS.indices]) 
-    TSMat = TSembeddingMatrix[TSorderID,:]
+    # #Embedding TS with best alphabet
+    # ALPHABET = np.asarray(ALPHABETS,dtype = object)[mask].tolist()
+    # embeddingStrategy.getSet(expTSSet, ALPHABET)
+    # TSembeddingMatrix = np.asarray(embeddingStrategy._embeddedSet)
+    # TSpatternID = embeddingStrategy._embeddedIDs   
+    # TSorderID = np.asarray([TSpatternID.index(x) for x in dataTS.indices]) 
+    # TSMat = TSembeddingMatrix[TSorderID,:]
     
-    predictedTS=classifier.predict(TSMat)
-    accuracyTS = sum(predictedTS==np.asarray(dataTS.labels))/len(dataTS.labels)
-    print("Accuracy on TS with global alphabet: {}".format(accuracyTS))    
+    # predictedTS=classifier.predict(TSMat)
+    # accuracyTS = sum(predictedTS==np.asarray(dataTS.labels))/len(dataTS.labels)
+    # print("Accuracy on TS with global alphabet: {}".format(accuracyTS))    
        
 
     return LogAgents,LogPerf,ClassAlphabets,TRMat,VSMat,predictedVSmask,dataVS.labels,TSMat,predictedTS,dataTS.labels,ALPHABETS,ALPHABET,mask
 
 if __name__ == "__main__":
 
-
+    # Parameter setup
+    # They should be setted by cmd line
     seed = 0
     random.seed(seed)
     npRng = np.random.default_rng(seed)
-    # Parameter setup
-    # They should be setted by cmd line
+
     path = "/home/luca/Documenti/Progetti/E-ABC_v2/eabc_v2/Datasets/IAM/Letter3/"
     name = "LetterH"
     #path = "/home/luca/Documenti/Progetti/E-ABC_v2/eabc_v2/Datasets/IAM/GREC/"
@@ -398,7 +276,7 @@ if __name__ == "__main__":
     N_subgraphs = 100
     ngen = 10
     mu = 10
-    lambda_= 50
+    lambda_= 10
     maxorder = 5
     CXPROB = 0.45
     MUTPROB = 0.45
@@ -406,7 +284,9 @@ if __name__ == "__main__":
     INDMUTP = 0.3
     TOURNSIZE = 3
     QMAX = 500
-
+    Parallel = True
+    
+    ##
 
     ###Preprocessing
     print("Loading...")    
@@ -456,8 +336,9 @@ if __name__ == "__main__":
     toolbox = base.Toolbox()
     
     #Multiprocessing map
-    # pool = multiprocessing.Pool()
-    # toolbox.register("map", pool.map)
+    if Parallel == True:
+        pool = multiprocessing.Pool()
+        toolbox.register("map", pool.map)
 
     eabc_Nested = eabc_Nested(DissimilarityClass=Dissimilarity,problemName = name,DissNormFactors=weights)
     
