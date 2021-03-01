@@ -18,8 +18,7 @@ from eabc.extractors import randomwalk_restart
 from eabc.embeddings import SymbolicHistogram
 from eabc.environments.nestedFS import eabc_Nested
 from eabc.extras import eabc_modelGen
-from eabc.extras.rewardingSystem import applyAgentReward,applySymbolReward
-
+from eabc.extras import Rewarder
 
 def IAMreader(parser,path):
     
@@ -51,6 +50,8 @@ def main(dataTR,dataVS,dataTS,N_subgraphs,mu,lambda_,ngen,maxorder,cxpb,mutpb,se
     
     #Not here
     model_generator = eabc_modelGen(seed=seed)
+    rewarder = Rewarder(MAX_GEN= ngen)
+
     
     ##################
  
@@ -69,7 +70,6 @@ def main(dataTR,dataVS,dataTS,N_subgraphs,mu,lambda_,ngen,maxorder,cxpb,mutpb,se
     ClassAlphabets={thisClass:[] for thisClass in classes}
     previousModels = []
     previousModelsPerf = []
-
 
     #
     for gen in range(0, ngen):
@@ -102,7 +102,7 @@ def main(dataTR,dataVS,dataTS,N_subgraphs,mu,lambda_,ngen,maxorder,cxpb,mutpb,se
                     idx = agent.ID
                     for s in alphabet:
                         s.owner = idx
-                        s.class_ = swarmClass
+                        #s.class_ = swarmClass
 
                 #Concatenate symbols if not empty
                 alphabet = sum(alphabets,[])
@@ -170,13 +170,17 @@ def main(dataTR,dataVS,dataTS,N_subgraphs,mu,lambda_,ngen,maxorder,cxpb,mutpb,se
             models = sorted(evaluatedModelsPerf,key = lambda x:x[1],reverse =True)[:numModel]
             print("Best K models: {}".format(list(zip(*models))[1]))
 
+            #Update generation in rewarder
+            rewarder.Gen = gen
+            print(rewarder.modelWeight)
+            
             #Rewarding stage
             for swarmClass in classes:
                 #reward symbols
-                applySymbolReward(models)
+                rewarder.applySymbolReward(models)
                 
                 #reward agent
-                applyAgentReward(population[swarmClass],ClassAlphabets[swarmClass])              
+                rewarder.applyAgentReward(population[swarmClass],ClassAlphabets[swarmClass])              
                 
                 # #thresholding alphabets and update
                 ClassAlphabets[swarmClass] = sorted(ClassAlphabets[swarmClass],key=lambda x: x.quality,reverse = True)[:bucketsCard]                  
@@ -191,9 +195,15 @@ def main(dataTR,dataVS,dataTS,N_subgraphs,mu,lambda_,ngen,maxorder,cxpb,mutpb,se
                 
 #                 #Save population at g = gen
 #                 LogAgents[gen][swarmClass].append([pop,fitnesses,rewardLog,fitnessesRewarded])
+            
+                print("{} Class agent qualities".format(swarmClass))
+                print([agent.fitness.values for agent in population[swarmClass]])
+            
 
-            previousModels = copy.deepcopy(list(zip(*models))[0])
-            previousModelsPerf = copy.deepcopy(list(zip(*models))[1])                        
+            previousModels = copy.deepcopy(list(list(zip(*models))[0])) #Orribile list(list())
+            previousModelsPerf = copy.deepcopy(list(list(zip(*models))[1]))
+
+                             
             print("----------------------------")
     
     print("Test phase")
