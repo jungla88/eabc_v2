@@ -23,17 +23,21 @@ class eabc_modelGen:
 
         self._models = []
 
+    #Input must be a dict with key=class and value = a list of symbols
     def createFromSymbols(self,alphabet):
         
+        #All symbols regardless their class
         mergedAlphabets = sum(alphabet.values(),[])
 
         #Choose at least a model with 2 symbol for convenience
         if len(mergedAlphabets)>2:
                         
             models = []
+            #Choose K model
             for _ in range(self._K):
                 
                 model =  np.array([])
+                #For each class alphabet extract some symbols
                 for class_ in alphabet.keys():
                     
                     p = self._extractProb(alphabet[class_])        
@@ -41,6 +45,7 @@ class eabc_modelGen:
                     #Set model cardinality
                     N = self._rng.integers(low=1,high= len(alphabet[class_]))
                     
+                    #TODO: better way to handle exception
                     if len(np.where(p==0))<N and p is not None:
                         highAdmittable = len(p)-len(np.where(p==0)[0])
                         N = self._rng.integers(low=1,high=highAdmittable )
@@ -173,7 +178,7 @@ class eabc_modelGen:
         with np.errstate(divide='ignore'):
             p = np.asarray(q)/overallQ
         
-        if np.isnan(p).all():
+        if np.isnan(p).all() or np.all(p==0):
             p = None
         
         
