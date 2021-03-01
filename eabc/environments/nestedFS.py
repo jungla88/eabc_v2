@@ -209,12 +209,12 @@ class eabc_Nested:
         
         fitness = f if not np.isnan(f) else 0
         
-        ID = individual.ID
+        # ID = individual.ID
         symbols = granulationStrategy.symbols
-        for symbol in symbols:
-            symbol.owner = ID
+        # for symbol in symbols:
+        #     symbol.owner = ID
             
-        individual.alphabetSize = len(symbols)
+        # individual.alphabetSize = len(symbols)
         
         return (fitness,), symbols
     
