@@ -4,9 +4,13 @@ from sklearn.preprocessing import MinMaxScaler
 class Rewarder:
     def __init__(self,MAX_GEN=20, isBootStrapped = True):
         
+        #Max generation
         self.MAX_GEN = MAX_GEN
+        #current generation
         self.gen = 0
+        #tradeoff weight between model contribution and internal cluster quality
         self._modelWeight = 0
+        #set bootstrapping on
         self._isBootStrapped = isBootStrapped
         
         
@@ -25,6 +29,10 @@ class Rewarder:
     @property
     def modelWeight(self):
         return self._modelWeight
+    @property
+    def isBootStrapped(self):
+        return self._isBootStrapped
+    
     
     def applySymbolReward(self,models_with_performance):
         
@@ -54,7 +62,7 @@ class Rewarder:
             agentSymbolsQ = np.asarray([quality for symbol,quality in zip(alphabet,scaledSymbolQs) if symbol.owner==agent.ID])
             agentSymbolsInternalQ = np.asarray([quality for symbol,quality in zip(alphabet,scaledSymbolInternalQs) if symbol.owner==agent.ID])
             
-            meanQ = 1-np.mean(agentSymbolsQ) if len(agentSymbolsQ) >= 1 else 0
+            meanQ = np.mean(agentSymbolsQ) if len(agentSymbolsQ) >= 1 else 0
             
             ##Update agent quality according to symbols qualities
             if agent.fitness.valid:
@@ -66,11 +74,14 @@ class Rewarder:
             
         #TODO: make sense normalizing agent fitness in [0,1]?        
         scaledAgentQs = MinMaxScaler().fit_transform(agentQualities.reshape((-1,1)))
+        
         for agent,Q,symbolsInQ in zip(agents,scaledAgentQs,agentInternalQualities):
-#            agent.fitness.values = Q,
             modelContribuiton = self._modelWeight*Q
             clusterContribution = (1-self._modelWeight)*symbolsInQ
             fitness = modelContribuiton + clusterContribution            
             agent.fitness.values= fitness,
-            print("Agent: {} - Model contribution: {} - Cluster: {} - Total {}".format(agent.ID,modelContribuiton,clusterContribution,fitness))
+            ##
+            agent.modelFitness = modelContribuiton
+            agent.clusterFitness =clusterContribution
+            print("Agent: {} - Model contribution: {} - Cluster contribution: {} - Total {}".format(agent.ID,agent.modelFitness,agent.clusterFitness,agent.fitness.values))
             
