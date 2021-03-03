@@ -9,6 +9,7 @@ import copy
 
 from sklearn.neighbors import KNeighborsClassifier as KNN
 from sklearn.metrics import confusion_matrix,balanced_accuracy_score
+from sklearn.ensemble import VotingClassifier
 
 from Datasets.IAM import IamDotLoader
 from Datasets.IAM import Letter,GREC,AIDS
@@ -16,7 +17,8 @@ from eabc.datasets import graph_nxDataset
 from eabc.extractors import Extractor
 from eabc.extractors import randomwalk_restart
 from eabc.embeddings import SymbolicHistogram
-from eabc.environments.nestedFS import eabc_Nested
+#from eabc.environments.nestedFS import eabc_Nested
+from eabc.environments.binaryGED_Eabc import eabc
 from eabc.extras import eabc_modelGen
 from eabc.extras import Rewarder
 
@@ -36,40 +38,42 @@ def IAMreader(parser,path):
     return graphs, classes 
 
 
-def main(dataTR,dataVS,dataTS,N_subgraphs,mu,lambda_,ngen,maxorder,cxpb,mutpb,seed):
+def main(dataTR,dataVS,dataTS,
+         N_subgraphs,
+         classBucketCard,bestModelsCard,
+         numRandModel,numRecombModel,
+         mu,lambda_,ngen,maxorder,cxpb,mutpb,
+         seed):
     
     print("Setup...")
+    #Instance objects
+    model_generator = eabc_modelGen(k=numRandModel,l=numRecombModel,seed=seed)
+    rewarder = Rewarder(MAX_GEN= ngen)
+
+    ##################
+    classes= dataTR.unique_labels
+    #Initialize a dict of swarms - {key:label - value:deap popolution}
+    population = {thisClass:toolbox.population(n=mu) for thisClass in classes}
+    #IDs class agents
+    IDagentsHistory = {thisClass:[ind.ID for ind in population[thisClass]] for thisClass in classes}
+
+    #Log book
+    LogAgents = {gen: {thisClass:[] for thisClass in classes} for gen in range(ngen+1)}
+    LogPerf = {gen: list() for gen in range(ngen+1)}    
+
+    #Initial Variables
+    ClassAlphabets={thisClass:[] for thisClass in classes}
+    previousModels = []
+    previousModelsPerf = []
+    previousClassifiers = []
+    
     #Graph decomposition
-    # extract_func = randomwalk_restart.extr_strategy(max_order=maxorder)
     extract_func = randomwalk_restart.extr_strategy(seed = seed)
     subgraph_extr = Extractor(extract_func,seed = seed)
 
     expTRSet = subgraph_extr.decomposeGraphDataset(dataTR,maxOrder= maxorder)
     expVSSet = subgraph_extr.decomposeGraphDataset(dataVS,maxOrder= maxorder)
     expTSSet = subgraph_extr.decomposeGraphDataset(dataTS,maxOrder= maxorder)
-    
-    #Not here
-    model_generator = eabc_modelGen(seed=seed)
-    rewarder = Rewarder(MAX_GEN= ngen)
-
-    
-    ##################
- 
-    classes= dataTR.unique_labels
-    #Initialize a dict of swarms - {key:label - value:deap popolution}
-    population = {thisClass:toolbox.population(n=mu) for thisClass in classes}
-    IDagentsHistory = {thisClass:[ind.ID for ind in population[thisClass]] for thisClass in classes}
-
-    bucketsCard = 20 #to be setted by cmd line
-    numModel = 4
-    
-    #Log book
-    LogAgents = {gen: {thisClass:[] for thisClass in classes} for gen in range(ngen+1)}
-    LogPerf = {thisClass:[] for thisClass in classes}
-    
-    ClassAlphabets={thisClass:[] for thisClass in classes}
-    previousModels = []
-    previousModelsPerf = []
 
     #
     for gen in range(0, ngen):
@@ -81,8 +85,8 @@ def main(dataTR,dataVS,dataTS,N_subgraphs,mu,lambda_,ngen,maxorder,cxpb,mutpb,se
                 print("############")
                 #Generate the offspring: mutation OR crossover OR reproduce and individual as it is
                 offspring = []
-                if gen > 0:
-                    offspring = toolbox.varOr(population=population[swarmClass],toolbox=toolbox,lambda_=lambda_, idHistory=IDagentsHistory[swarmClass])
+                #if gen > 0:
+                offspring = toolbox.varOr(population=population[swarmClass],toolbox=toolbox,lambda_=lambda_, idHistory=IDagentsHistory[swarmClass])
                 
                 #Selecting data for this swarm               
                 thisClassPatternIDs = np.where(np.asarray(dataTR.labels)==swarmClass)[0]
@@ -102,7 +106,6 @@ def main(dataTR,dataVS,dataTS,N_subgraphs,mu,lambda_,ngen,maxorder,cxpb,mutpb,se
                     idx = agent.ID
                     for s in alphabet:
                         s.owner = idx
-                        #s.class_ = swarmClass
 
                 #Concatenate symbols if not empty
                 alphabet = sum(alphabets,[])
@@ -110,12 +113,12 @@ def main(dataTR,dataVS,dataTS,N_subgraphs,mu,lambda_,ngen,maxorder,cxpb,mutpb,se
                 #Temporary save overlength alphabet
                 ClassAlphabets[swarmClass] = ClassAlphabets[swarmClass] + alphabet
 
+                print(population[swarmClass][0])
+
             #Merging all class buckets
             mergedClassAlphabets = sum(ClassAlphabets.values(),[])
 
             #Models creation stage
-            
-#            randomGeneratedModels = model_generator.createFromSymbols(mergedClassAlphabets)
             randomGeneratedModels = model_generator.createFromSymbols(ClassAlphabets)
             #Create new model from the current and previous generation
             recombinedModels = model_generator.createFromModels(randomGeneratedModels+previousModels)
@@ -165,36 +168,33 @@ def main(dataTR,dataVS,dataTS,N_subgraphs,mu,lambda_,ngen,maxorder,cxpb,mutpb,se
                 print("Balanced accuracy {} - model perf {} - alphabet = {}".format(J, modelPerformances[i],len(model)))
             
             #Join new models with previous models with performances
-            evaluatedModelsPerf= list(zip(candidateModels,modelPerformances)) + list(zip(previousModels,previousModelsPerf))
+            evaluatedModelsPerf= list(zip(candidateModels,modelPerformances,classificationModel)) + list(zip(previousModels,previousModelsPerf,previousClassifiers))
             #Sorting and thresholding models by performances
-            models = sorted(evaluatedModelsPerf,key = lambda x:x[1],reverse =True)[:numModel]
+            models = sorted(evaluatedModelsPerf,key = lambda x:x[1],reverse =True)[:bestModelsCard]
             print("Best K models: {}".format(list(zip(*models))[1]))
 
             #Update generation in rewarder
             rewarder.Gen = gen
-            print(rewarder.modelWeight)
+            print("Tradeoff model/cluster compactness and card: {}".format(rewarder.modelWeight))
             
             #Rewarding stage
             for swarmClass in classes:
                 #reward symbols
-                rewarder.applySymbolReward(models)
+                modelsToReward=[[model,perf] for model,perf,classifier in models]
+                rewarder.applySymbolReward(modelsToReward)
                 
                 #reward agent
                 rewarder.applyAgentReward(population[swarmClass],ClassAlphabets[swarmClass])              
                 
                 # #thresholding alphabets and update
-                ClassAlphabets[swarmClass] = sorted(ClassAlphabets[swarmClass],key=lambda x: x.quality,reverse = True)[:bucketsCard]                  
+                ClassAlphabets[swarmClass] = sorted(ClassAlphabets[swarmClass],key=lambda x: x.quality,reverse = True)[:classBucketCard]                  
                           
                 # Select the next generation population for the current swarm
                 if gen > 0:
                     population[swarmClass][:] = toolbox.select(population[swarmClass], mu)
-                # else:
-                #     population[swarmClass][:] = pop
-#                 #Save Informedness for class and gen
-#                 LogPerf[swarmClass].append([J,sum(np.asarray(best_GA2)==1),len(best_GA2)])
                 
-#                 #Save population at g = gen
-#                 LogAgents[gen][swarmClass].append([pop,fitnesses,rewardLog,fitnessesRewarded])
+                #Save population at g = gen
+                LogAgents[gen][swarmClass].append([population[swarmClass],ClassAlphabets[swarmClass]])
             
                 print("{} Class agent qualities".format(swarmClass))
                 print([agent.fitness.values for agent in population[swarmClass]])
@@ -202,11 +202,20 @@ def main(dataTR,dataVS,dataTS,N_subgraphs,mu,lambda_,ngen,maxorder,cxpb,mutpb,se
 
             previousModels = copy.deepcopy(list(list(zip(*models))[0])) #Orribile list(list())
             previousModelsPerf = copy.deepcopy(list(list(zip(*models))[1]))
+            previousClassifiers = copy.deepcopy(list(list(zip(*models))[2]))
 
+            #Save models performances
+            LogPerf[gen] = [previousModels,previousModelsPerf,previousClassifiers]
                              
             print("----------------------------")
     
     print("Test phase")
+    
+    
+    
+    # TrainedClassifiersDict = {i:previousClassifiers[i] for i in range(len(previousClassifiers))}
+    # ensemble = VotingClassifier(TrainedClassifiersDict)
+    # ensemble.fit()
     #Collect class alphabets and embeddeding TR,VS,TS with concatenated Alphabets
     # ALPHABETS=[alphabets for alphabets in ClassAlphabets.values()]   
     # ALPHABETS = sum(ALPHABETS,[])
@@ -226,25 +235,6 @@ def main(dataTR,dataVS,dataTS,N_subgraphs,mu,lambda_,ngen,maxorder,cxpb,mutpb,se
     # TRMat = TRembeddingMatrix[TRorderID,:]
     # VSMat = VSembeddingMatrix[VSorderID,:]        
 
-    # #Feature Selection                  
-    # bounds_GA2, CXPB_GA2, MUTPB_GA2, DE_Pop = FSsetup_DE(len(ALPHABETS), -1)
-    # FS_accDE= partial(FSfitness_DE,perfMetric = 'accuracy')
-    # TuningResults_GA2 = differential_evolution(FS_accDE, bounds_GA2, 
-    #                                            args=(TRMat,
-    #                                                  VSMat, 
-    #                                                  dataTR.labels, 
-    #                                                  dataVS.labels),
-    #                                                  maxiter=100, init=DE_Pop, 
-    #                                                  recombination=CXPB_GA2,
-    #                                                  mutation=MUTPB_GA2,
-    #                                                  seed = seed,
-    #                                                  workers=-1, 
-    #                                                  polish=False, 
-    #                                                  updating='deferred')
-    
-    # best_GA2 = [round(i) for i in TuningResults_GA2.x]
-    # print("Selected {}/{} feature".format(sum(np.asarray(best_GA2)==1), len(best_GA2)))
-    
     # #Embedding with best alphabet
     # mask = np.array(best_GA2,dtype=bool)
     # classifier = KNN()
@@ -267,7 +257,7 @@ def main(dataTR,dataVS,dataTS,N_subgraphs,mu,lambda_,ngen,maxorder,cxpb,mutpb,se
     # print("Accuracy on TS with global alphabet: {}".format(accuracyTS))    
        
 
-    return LogAgents,LogPerf,ClassAlphabets,TRMat,VSMat,predictedVSmask,dataVS.labels,TSMat,predictedTS,dataTS.labels,ALPHABETS,ALPHABET,mask
+    return LogAgents,LogPerf,ClassAlphabets,TRMat,VSMat,predictedVSmask,dataVS.labels,TSMat,predictedTS,dataTS.labels,ALPHABETS,ALPHABET
 
 if __name__ == "__main__":
 
@@ -283,8 +273,16 @@ if __name__ == "__main__":
     #name = "GREC"  
     # path = "/home/luca/Documenti/Progetti/E-ABC_v2/eabc_v2/Datasets/IAM/AIDS/"
     # name = "AIDS" 
+    
+    #Algorithm Hyper Params
     N_subgraphs = 100
     ngen = 10
+    classBucketCard = 100
+    bestModelsCard = 10
+    numRandModel = 5
+    numRecombModel = 10
+    
+    #Genetic Hyper Params
     mu = 10
     lambda_= 10
     maxorder = 5
@@ -341,7 +339,7 @@ if __name__ == "__main__":
 
     #Maximizing
     creator.create("FitnessMax", base.Fitness, weights=(1.0,))
-    creator.create("Agent", list, fitness=creator.FitnessMax, ID = None, alphabetSize = None)
+    creator.create("Agent", list, fitness=creator.FitnessMax, ID = None,modelFitness= None,clusterFitness= None)
     
     toolbox = base.Toolbox()
     
@@ -350,33 +348,37 @@ if __name__ == "__main__":
         pool = multiprocessing.Pool()
         toolbox.register("map", pool.map)
 
-    eabc_Nested = eabc_Nested(DissimilarityClass=Dissimilarity,problemName = name,DissNormFactors=weights)
+    eabc = eabc(DissimilarityClass=Dissimilarity,problemName = name,DissNormFactors=weights)
     
     #Q scaling
     scale_factor = len(np.unique(dataTR.labels,dataVS.labels,dataTS.labels)[0])
     scaledQ = round(QMAX/scale_factor)
     
-    toolbox.register("attr_genes", eabc_Nested.gene_bound,QMAX = scaledQ) 
+    toolbox.register("attr_genes", eabc.gene_bound,QMAX = scaledQ) 
     toolbox.register("agent", tools.initIterate,
                     creator.Agent, toolbox.attr_genes)
     
     
-    toolbox.register("population", eabc_Nested.initAgents, toolbox.agent,n=100)  
-    toolbox.register("evaluate", eabc_Nested.fitness)
-    toolbox.register("mate", eabc_Nested.customXover,indpb=INDCXP)
+    toolbox.register("population", eabc.initAgents, toolbox.agent,n=100)  
+    toolbox.register("evaluate", eabc.fitness)
+    toolbox.register("mate", eabc.customXover,indpb=INDCXP)
     #Setup mutation
-    toolbox.register("mutate", eabc_Nested.customMutation,mu = 0, indpb=INDMUTP)
+    toolbox.register("mutate", eabc.customMutation,mu = 0, indpb=INDMUTP)
     toolbox.register("select", tools.selTournament, tournsize=TOURNSIZE)
-    toolbox.register("varOr",eabc_Nested.varOr,cxpb= CXPROB, mutpb=MUTPROB)
+    toolbox.register("varOr",eabc.varOr,cxpb= CXPROB, mutpb=MUTPROB)
     
     #Decorator bound    
-    toolbox.decorate("mate", eabc_Nested.checkBounds(scaledQ))
-    toolbox.decorate("mutate", eabc_Nested.checkBounds(scaledQ))
+    toolbox.decorate("mate", eabc.checkBounds(scaledQ))
+    toolbox.decorate("mutate", eabc.checkBounds(scaledQ))
     
     LogAgents, LogPerf,ClassAlphabets,TRMat,VSMat,predictedVSmask,VSlabels,TSMat,predictedTS,TSlabels, ALPHABETS,ALPHABET,mask = main(dataTR,
                                                                                                                                       dataVS,
                                                                                                                                       dataTS,
                                                                                                                                       N_subgraphs,
+                                                                                                                                      classBucketCard,
+                                                                                                                                      bestModelsCard,
+                                                                                                                                      numRandModel,
+                                                                                                                                      numRecombModel,
                                                                                                                                       mu,
                                                                                                                                       lambda_,
                                                                                                                                       ngen,
