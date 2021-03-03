@@ -28,9 +28,6 @@ class Granule:
         
         #Better evaluate F externally?
 #        self._Fweight = eta
-        
-        # Evaluate it on granulator?
-#        self._effectiveRadius = None
 
 
 
@@ -107,6 +104,7 @@ class Granule:
     @owner.setter
     def owner(self,val):
         self._ownerID = val
+
     # @property
     # def effectiveRadius(self):
     #     return self._effectiveRadius
