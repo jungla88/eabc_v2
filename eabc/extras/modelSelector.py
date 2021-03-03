@@ -71,47 +71,7 @@ class eabc_modelGen:
             print("Warning in modelSelector")
         
         return models
-        
-        # #Choose at least a model with 2 symbol for convenience
-        # if len(alphabet)>2:
-        
-        #     p = self._extractProb(alphabet)        
-        #     #return symbols have all q values
-        #     if np.isnan(p).all():
-        #         p = None
-                
-        #     models = []
-        #     for _ in range(self._K):
-                
-                
-        #         #Set model cardinality
-        #         N = self._rng.integers(low=2,high= len(alphabet))
-                
-                
-                
-        #         if len(np.where(p==0))<N and p is not None:
-        #             highAdmittable = len(p)-len(np.where(p==0)[0])
-        #             N = self._rng.integers(low=2,high=highAdmittable )
-                
-        #         thisModel = self._rng.choice(alphabet,size= N,replace=False,p=p)
-                
-
-        #         models.append(thisModel)
-            
-        #     #process the symbols with null quality
-        #     nullSymbolsIndices = np.where(p==0)[0]
-            
-        #     nullSymbols= np.asarray(alphabet,dtype=object)[nullSymbolsIndices]
-            
-        #     for item in nullSymbols:
-        #         if self._rng.random()<=0.5: #Flip a coin
-        #             modelIndex = self._rng.choice(len(models))
-        #             np.concatenate((models[modelIndex],np.reshape(item,(1,))))
-        # else:
-        #     models = []
-        #     print("Warning in modelSelector")
-            
-        # return models
+    
     
     def createFromModels(self,models):
         
