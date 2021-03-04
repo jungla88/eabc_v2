@@ -48,8 +48,11 @@ class eabc_modelGen:
                     #TODO: better way to handle exception
                     if len(np.where(p==0))<N and p is not None:
                         highAdmittable = len(p)-len(np.where(p==0)[0])
-                        N = self._rng.integers(low=1,high=highAdmittable )
-                    
+                        if highAdmittable>1:
+                            N = self._rng.integers(low=1,high=highAdmittable )
+                        else:
+                            N=1
+                            
                     thisModel = self._rng.choice(alphabet[class_],size= N,replace=False,p=p)
                     
                     model = np.concatenate((model,thisModel))
