@@ -21,6 +21,7 @@ from eabc.embeddings import SymbolicHistogram
 from eabc.environments.binaryGED_Eabc import eabc
 from eabc.extras import eabc_modelGen
 from eabc.extras import Rewarder
+from eabc.extras import consensusStrategy
 
 def IAMreader(parser,path):
     
@@ -50,6 +51,7 @@ def main(dataTR,dataVS,dataTS,
     model_generator = eabc_modelGen(k=numRandModel,l=numRecombModel,seed=seed)
     rewarder = Rewarder(MAX_GEN= ngen)
 
+    consensusRewarder = consensusStrategy("Letter")
     ##################
     classes= dataTR.unique_labels
     #Initialize a dict of swarms - {key:label - value:deap popolution}
@@ -110,10 +112,13 @@ def main(dataTR,dataVS,dataTS,
                 #Concatenate symbols if not empty
                 alphabet = sum(alphabets,[])
 
+                consensusRewarder.applyConsensus(population[swarmClass],ClassAlphabets[swarmClass])
+
+
                 #Temporary save overlength alphabet
                 ClassAlphabets[swarmClass] = ClassAlphabets[swarmClass] + alphabet
+                
 
-                print(population[swarmClass][0])
 
             #Merging all class buckets
             mergedClassAlphabets = sum(ClassAlphabets.values(),[])
@@ -154,7 +159,7 @@ def main(dataTR,dataVS,dataTS,
                 classifier.fit(TRMat,dataTR.labels)
                 predictedVSLabels = classifier.predict(VSMat)
                      
-                J = balanced_accuracy_score(dataVS.labels,predictedVSLabels)
+                J = balanced_accuracy_score(dataVS.labels,predictedVSLabels,adjusted=True)
                 
                 modelSize = len(model)
                 #
