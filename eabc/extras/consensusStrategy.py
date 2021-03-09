@@ -20,6 +20,7 @@ class consensusStrategy:
     def applyConsensus(self,agents,symbols):
 
 
+        #TODO: set a user defined lambda that select metric parameters
         for commonMetric,group in groupby(agents,lambda x: x[1:7]):
             
             g = tuple(group)
@@ -42,33 +43,37 @@ class consensusStrategy:
                     repr2 = [sym.representative for sym in symbols2]
                     
                     M = diss.pdist2(repr1,repr2)
+                    #this contains two column array defining the pairs of symbol that satisfy the constrain
+                    symbolpairs = np.where(M<= self._threshold)
+                    
+                    for i,j in zip(symbolpairs[0],symbolpairs[1]):
+                        self._reward(symbols1[i],symbols2[j])
                         
-                    #column indices of minimum values on rows
-                    minIndices = np.argmin(M,axis = 0)
+                    # #column indices of minimum values on rows
+                    # minIndices = np.argmin(M,axis = 0)
+
                     #their distance values
-                    minDistances = np.choose(minIndices,M)
+#                    minDistances = np.choose(minIndices,M)
                     
                     #find which rows satisfy the threshold
-                    symbols_j = np.where(minDistances<= self._threshold)[0]
+#                    symbols_j = np.where(minDistances<= self._threshold)[0]
                     #
-                    symbols_i = minIndices[symbols_j]
+                    #symbols_i = minIndices[symbols_j]
                     
                     #First column indicate the row of the matrix, the second the column
-                    symbolspair_indices = np.vstack((symbols_i,symbols_j)).T
+#                    symbolspair_indices = np.vstack((symbols_i,symbols_j)).T
                     
-                    for row in symbolspair_indices:
-                        self._reward(symbols1[row[0]],symbols2[row[1]])
+#                    for row in symbolspair_indices:
+#                        self._reward(symbols1[row[0]],symbols2[row[1]])
                     
-                
-        if self._problemName=="GREC":
-            pass
         
         return 0
     
     
     def _reward(self,sym1,sym2):
         
-        sym1.quality *= 2 
-        sym2.quality *=2
+        #symbols quality could be negative. Thus multiply by a constant could worsen the quality
+        sym1.quality *= sym2.quality 
+        sym2.quality *= sym1.quality
         
         return 0
