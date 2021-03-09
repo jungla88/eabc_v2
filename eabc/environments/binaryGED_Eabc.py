@@ -222,17 +222,16 @@ class eabc:
         ####
 
         granulationStrategy.granulate(granulationBucket)
-        f_sym = np.array([symbol.Fvalue for symbol in granulationStrategy.symbols])
-    #    f = np.average(f_sym) if f_sym.size!=0 else np.nan
+        # f_sym = np.array([symbol.Fvalue for symbol in granulationStrategy.symbols])
     
-        #f_sym is better when lower. The problem is casted for maximasation
-        f = 1-np.average(f_sym) if f_sym.size!=0 else np.nan     
+        # #f_sym is better when lower. The problem is casted for maximasation
+        # f = 1-np.average(f_sym) if f_sym.size!=0 else np.nan     
         
-        fitness = f if not np.isnan(f) else 0
+        # fitness = f if not np.isnan(f) else 0
         
         symbols = granulationStrategy.symbols
         
-        return (fitness,), symbols
+        return symbols
     
 #    @staticmethod
     def checkBounds(self,QMAX):
