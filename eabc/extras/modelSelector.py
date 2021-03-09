@@ -26,52 +26,56 @@ class eabc_modelGen:
     #Input must be a dict with key=class and value = a list of symbols
     def createFromSymbols(self,alphabet):
         
+        self.__alphabet_sanity_check(alphabet)        
+        
         #All symbols regardless their class
         mergedAlphabets = sum(alphabet.values(),[])
-
-        #Choose at least a model with 2 symbol for convenience
-        if len(mergedAlphabets)>2:
-                        
-            models = []
-            #Choose K model
-            for _ in range(self._K):
+    
+        models = []
+        #Choose K model
+        for _ in range(self._K):
+            
+            model =  np.array([])
+            #For each class alphabet extract some symbols
+            for class_ in alphabet.keys():
                 
-                model =  np.array([])
-                #For each class alphabet extract some symbols
-                for class_ in alphabet.keys():
-                    
-                    p = self._extractProb(alphabet[class_])        
+                
+                #BUG: randomly emit unreasonable values
+#                    p = self._extractProb(alphabet[class_])        
 
-                    #Set model cardinality
+                #Set model cardinality
+                N = 1
+                if len(alphabet[class_])>1:
                     N = self._rng.integers(low=1,high= len(alphabet[class_]))
-                    
-                    #TODO: better way to handle exception
-                    if len(np.where(p==0))<N and p is not None:
-                        highAdmittable = len(p)-len(np.where(p==0)[0])
-                        if highAdmittable>1:
-                            N = self._rng.integers(low=1,high=highAdmittable )
-                        else:
-                            N=1
-                            
-                    thisModel = self._rng.choice(alphabet[class_],size= N,replace=False,p=p)
-                    
-                    model = np.concatenate((model,thisModel))
+                
+                #BUG: too many exception to handle
+                # if len(np.where(p==0))<N and p is not None:
+                #     highAdmittable = len(p)-len(np.where(p==0)[0])
+                #     if highAdmittable>1:
+                #         N = self._rng.integers(low=1,high=highAdmittable )
+                #     else:
+                #         N=1
+                
+                #Extract with p probabiblity
+                #thisModel = self._rng.choice(alphabet[class_],size= N,replace=False,p=p)
+                
+                #Extract with uniform probability
+                thisModel = self._rng.choice(alphabet[class_],size= N,replace=False)
+                
+                model = np.concatenate((model,thisModel))
 
-                models.append(model)
-
+            models.append(model)
+    
             #process the symbols with null quality
-            p = self._extractProb(mergedAlphabets)    
-            nullSymbolsIndices = np.where(p==0)[0]
+            # p = self._extractProb(mergedAlphabets)    
+            # nullSymbolsIndices = np.where(p==0)[0]
             
-            nullSymbols= np.asarray(mergedAlphabets,dtype=object)[nullSymbolsIndices]
+            # nullSymbols= np.asarray(mergedAlphabets,dtype=object)[nullSymbolsIndices]
             
-            for item in nullSymbols:
-                if self._rng.random()<=0.5: #Flip a coin
-                    modelIndex = self._rng.choice(len(models))
-                    np.concatenate((models[modelIndex],np.reshape(item,(1,))))
-        else:
-            models = []
-            print("Warning in modelSelector")
+            # for item in nullSymbols:
+            #     if self._rng.random()<=0.5: #Flip a coin
+            #         modelIndex = self._rng.choice(len(models))
+            #         np.concatenate((models[modelIndex],np.reshape(item,(1,))))
         
         return models
     
@@ -133,16 +137,38 @@ class eabc_modelGen:
         
         return models_
                 
-    def _extractProb(self,alphabet):
+    # def _extractProb(self,alphabet):
         
-        q = [sym.quality if sym.quality > 0 else 0 for sym in alphabet]
-        overallQ = sum(q)
+    #     q = [sym.quality if sym.quality > 0 else 0 for sym in alphabet]
+    #     overallQ = sum(q)
+
+    #     p = np.asarray(q)/overallQ
+
+    #     if np.isnan(p).all() or np.all(p==0):
+    #         p = None
         
-        with np.errstate(divide='ignore'):
-            p = np.asarray(q)/overallQ
         
-        if np.isnan(p).all() or np.all(p==0):
-            p = None
+    #     return p
+    
+    @staticmethod
+    def __alphabet_sanity_check(alphabet):
+        
+        if isinstance(alphabet,dict):
+            
+            for class_,value in alphabet.items():
+                
+                if not isinstance(value,(list,np.ndarray)):
+                    
+                    raise TypeError('class alphabet must be list or ndarray not {}'.format(type(value)))
+                
+                else:
+                    
+                    if len(value)==0:
+                        
+                        raise ValueError('{} class alphabet is empty'.format(class_))
+                
+        else:
+            raise TypeError('Alphabet must be a dict not {}'.format(type(alphabet)))
+                            
         
         
-        return p
