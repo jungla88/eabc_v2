@@ -19,9 +19,11 @@ from eabc.extractors import randomwalk_restart
 from eabc.embeddings import SymbolicHistogram
 #from eabc.environments.nestedFS import eabc_Nested
 from eabc.environments.binaryGED_Eabc import eabc
+#TOBE MOVED
 from eabc.extras import eabc_modelGen
 from eabc.extras import Rewarder
 from eabc.extras import consensusStrategy
+from eabc.extras import StackClassifiers
 
 def IAMreader(parser,path):
     
@@ -101,7 +103,8 @@ def main(dataTR,dataVS,dataTS,
                 subgraphs = [subgraph_extr.randomExtractDataset(classAwareTR, N_subgraphs) for _ in population[swarmClass]]
                 
                 #Run individual and return the partial fitness comp+card
-                internalClustEval,alphabets = zip(*toolbox.map(toolbox.evaluate, zip(population[swarmClass],subgraphs)))
+#                internalClustEval,alphabets = zip(*toolbox.map(toolbox.evaluate, zip(population[swarmClass],subgraphs)))
+                alphabets = toolbox.map(toolbox.evaluate, zip(population[swarmClass],subgraphs))
                 
                 #processing alphabets ids and ownership
                 for agent,alphabet in zip(population[swarmClass],alphabets):
@@ -112,8 +115,7 @@ def main(dataTR,dataVS,dataTS,
                 #Concatenate symbols if not empty
                 alphabet = sum(alphabets,[])
 
-                consensusRewarder.applyConsensus(population[swarmClass],ClassAlphabets[swarmClass])
-
+                # consensusRewarder.applyConsensus(population[swarmClass],ClassAlphabets[swarmClass])
 
                 #Temporary save overlength alphabet
                 ClassAlphabets[swarmClass] = ClassAlphabets[swarmClass] + alphabet
@@ -181,15 +183,23 @@ def main(dataTR,dataVS,dataTS,
             #Update generation in rewarder
             rewarder.Gen = gen
             print("Tradeoff model/cluster compactness and card: {}".format(rewarder.modelWeight))
+
+
             
             #Rewarding stage
+            
+            #reward symbols for model performances
+            #FIXME: Symbols not chosen are not rewarded/penalized
+            modelsToReward=[[model,perf] for model,perf,classifier in models]
+            rewarder.applySymbolReward(modelsToReward)            
+            
             for swarmClass in classes:
-                #reward symbols
-                modelsToReward=[[model,perf] for model,perf,classifier in models]
-                rewarder.applySymbolReward(modelsToReward)
+                
+                #reward symbols in the same metric
+                consensusRewarder.applyConsensus(population[swarmClass],ClassAlphabets[swarmClass])                
                 
                 #reward agent
-                rewarder.applyAgentReward(population[swarmClass],ClassAlphabets[swarmClass])              
+                rewarder.applyAgentReward(population[swarmClass],ClassAlphabets[swarmClass])
                 
                 # #thresholding alphabets and update
                 ClassAlphabets[swarmClass] = sorted(ClassAlphabets[swarmClass],key=lambda x: x.quality,reverse = True)[:classBucketCard]                  
@@ -203,6 +213,10 @@ def main(dataTR,dataVS,dataTS,
             
                 print("{} Class agent qualities".format(swarmClass))
                 print([agent.fitness.values for agent in population[swarmClass]])
+                
+                print("--")
+                print("{} Class symbols qualities".format(swarmClass))
+                print([sym.quality for sym in ClassAlphabets[swarmClass]])
             
 
             previousModels = copy.deepcopy(list(list(zip(*models))[0])) #Orribile list(list())
@@ -216,53 +230,34 @@ def main(dataTR,dataVS,dataTS,
     
     print("Test phase")
     
+    print("Embedding Test Set")
+    TSembeddingSpaces = []
+    for model_ in previousModels:
+        
+        embeddingStrategy = SymbolicHistogram(isSymbolDiss=True,isParallel=False)
+        
+    #     #Embedding with current symbols
+        embeddingStrategy.getSet(expTSSet, model_)
+        TSembeddingMatrix = np.asarray(embeddingStrategy._embeddedSet)
+        TSpatternID = embeddingStrategy._embeddedIDs
+
+        #Resorting matrix for consistency with dataset        
+        TSorderID = np.asarray([TSpatternID.index(x) for x in dataTS.indices])
+        TSMat = TSembeddingMatrix[TSorderID,:]    
+
+        TSembeddingSpaces.append(TSMat)
+
+    print("Building ensemble of classifiers...")
+    ensembleClassifier = StackClassifiers(previousClassifiers,isPrefit=True)
+    ensembleClassifier.fit(labels=dataTR.labels)
+    predictedTSLabels = ensembleClassifier.predict(TSembeddingSpaces)
     
     
-    # TrainedClassifiersDict = {i:previousClassifiers[i] for i in range(len(previousClassifiers))}
-    # ensemble = VotingClassifier(TrainedClassifiersDict)
-    # ensemble.fit()
-    #Collect class alphabets and embeddeding TR,VS,TS with concatenated Alphabets
-    # ALPHABETS=[alphabets for alphabets in ClassAlphabets.values()]   
-    # ALPHABETS = sum(ALPHABETS,[])
-    
-    # embeddingStrategy.getSet(expTRSet, ALPHABETS)
-    # TRembeddingMatrix = np.asarray(embeddingStrategy._embeddedSet)
-    # TRpatternID = embeddingStrategy._embeddedIDs
-
-    # embeddingStrategy.getSet(expVSSet, ALPHABETS)
-    # VSembeddingMatrix = np.asarray(embeddingStrategy._embeddedSet)
-    # VSpatternID = embeddingStrategy._embeddedIDs
-
-    # #Resorting matrix for consistency with dataset        
-    # TRorderID = np.asarray([TRpatternID.index(x) for x in dataTR.indices])
-    # VSorderID = np.asarray([VSpatternID.index(x) for x in dataVS.indices])   
-
-    # TRMat = TRembeddingMatrix[TRorderID,:]
-    # VSMat = VSembeddingMatrix[VSorderID,:]        
-
-    # #Embedding with best alphabet
-    # mask = np.array(best_GA2,dtype=bool)
-    # classifier = KNN()
-    # classifier.fit(TRMat[:, mask], dataTR.labels)
-    # predictedVSmask=classifier.predict(VSMat[:, mask])
-    
-    # accuracyVS = sum(predictedVSmask==np.asarray(dataVS.labels))/len(dataVS.labels)
-    # print("Accuracy on VS with global alphabet: {}".format(accuracyVS))
-
-    # #Embedding TS with best alphabet
-    # ALPHABET = np.asarray(ALPHABETS,dtype = object)[mask].tolist()
-    # embeddingStrategy.getSet(expTSSet, ALPHABET)
-    # TSembeddingMatrix = np.asarray(embeddingStrategy._embeddedSet)
-    # TSpatternID = embeddingStrategy._embeddedIDs   
-    # TSorderID = np.asarray([TSpatternID.index(x) for x in dataTS.indices]) 
-    # TSMat = TSembeddingMatrix[TSorderID,:]
-    
-    # predictedTS=classifier.predict(TSMat)
-    # accuracyTS = sum(predictedTS==np.asarray(dataTS.labels))/len(dataTS.labels)
-    # print("Accuracy on TS with global alphabet: {}".format(accuracyTS))    
+    accuracyTS = sum(predictedTSLabels==np.asarray(dataTS.labels))/len(dataTS.labels)
+    print("Accuracy on TS: {}".format(accuracyTS))    
        
 
-    return LogAgents,LogPerf,ClassAlphabets,TRMat,VSMat,predictedVSmask,dataVS.labels,TSMat,predictedTS,dataTS.labels,ALPHABETS,ALPHABET
+    return LogAgents,LogPerf,ClassAlphabets,previousModels,previousModelsPerf,previousClassifiers,ensembleClassifier,TSembeddingSpaces,predictedTSLabels,dataTR.labels,dataVS.labels,dataTS.labels
 
 if __name__ == "__main__":
 
@@ -281,15 +276,15 @@ if __name__ == "__main__":
     
     #Algorithm Hyper Params
     N_subgraphs = 100
-    ngen = 10
+    ngen = 1
     classBucketCard = 100
     bestModelsCard = 10
     numRandModel = 5
-    numRecombModel = 10
+    numRecombModel = 5
     
     #Genetic Hyper Params
-    mu = 10
-    lambda_= 10
+    mu = 5
+    lambda_= 5
     maxorder = 5
     CXPROB = 0.45
     MUTPROB = 0.45
@@ -376,21 +371,21 @@ if __name__ == "__main__":
     toolbox.decorate("mate", eabc.checkBounds(scaledQ))
     toolbox.decorate("mutate", eabc.checkBounds(scaledQ))
     
-    LogAgents, LogPerf,ClassAlphabets,TRMat,VSMat,predictedVSmask,VSlabels,TSMat,predictedTS,TSlabels, ALPHABETS,ALPHABET,mask = main(dataTR,
-                                                                                                                                      dataVS,
-                                                                                                                                      dataTS,
-                                                                                                                                      N_subgraphs,
-                                                                                                                                      classBucketCard,
-                                                                                                                                      bestModelsCard,
-                                                                                                                                      numRandModel,
-                                                                                                                                      numRecombModel,
-                                                                                                                                      mu,
-                                                                                                                                      lambda_,
-                                                                                                                                      ngen,
-                                                                                                                                      maxorder,
-                                                                                                                                      CXPROB,
-                                                                                                                                      MUTPROB,
-                                                                                                                                      npRng)
+    LogAgents,LogPerf,ClassAlphabets,previousModels,previousModelsPerf,previousClassifiers,ensembleClassifier,TSembeddingSpaces,predictedTSLabels,dataTR.labels,dataVS.labels,dataTS.labels=main(dataTR,
+                                                                                                                                                                                                  dataVS,
+                                                                                                                                                                                                  dataTS,
+                                                                                                                                                                                                  N_subgraphs,
+                                                                                                                                                                                                  classBucketCard,
+                                                                                                                                                                                                  bestModelsCard,
+                                                                                                                                                                                                  numRandModel,
+                                                                                                                                                                                                  numRecombModel,
+                                                                                                                                                                                                  mu,
+                                                                                                                                                                                                  lambda_,
+                                                                                                                                                                                                  ngen,
+                                                                                                                                                                                                  maxorder,
+                                                                                                                                                                                                  CXPROB,
+                                                                                                                                                                                                  MUTPROB,
+                                                                                                                                                                                                  npRng)
     
     
 
@@ -405,17 +400,10 @@ if __name__ == "__main__":
                 'Agents':LogAgents,
                 'PerformancesTraining':LogPerf,
                 'ClassAlphabets':ClassAlphabets,
-                'TRMat':TRMat,
                 'TRlabels':dataTR.labels,
-                'VSMat':VSMat,
-                'predictedVSmask':predictedVSmask,
-                'VSlabels':VSlabels,
-                'TSMat':TSMat,
-                'predictedTS':predictedTS,
-                'TSlabels':TSlabels,
-                'ALPHABETS':ALPHABETS,
-                'ALPHABET':ALPHABET,
-                'mask':mask,
+                'VSlabels':dataVS.labels,
+                'predictedTS':predictedTSLabels,
+                'TSlabels':dataTS.labels,
                 'N_subgraphs':N_subgraphs,
                 'N_gen':ngen,
                 'Mu':mu,
