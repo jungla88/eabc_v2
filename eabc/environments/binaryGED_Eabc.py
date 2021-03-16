@@ -12,11 +12,15 @@ from eabc.granulators import BsasBinarySearch
 
 import numpy as np
 from deap import tools
+
 import random
 
 class eabc:
     
-    def __init__(self,DissimilarityClass,problemName,DissNormFactors = None):
+    def __init__(self,DissimilarityClass,problemName,DissNormFactors = None,seed = None):
+        
+        self._rng = np.random.default_rng(seed) 
+
         
         self._problemName = problemName
         self._dissimilarityClass = DissimilarityClass
@@ -66,7 +70,7 @@ class eabc:
         ind1[0]=g_q1[0]
         ind2[0]=g_q2[0]
         #two point crossover individuals are always modified. We edit this slice of genetic code only if condition is valid
-        if random.random()<indpb:
+        if self._rng.random()<indpb:
             for i,(g1,g2) in enumerate(zip(g_ged1,g_ged2),start = 1):
                 ind1[i]=g1
                 ind2[i]=g2
@@ -87,7 +91,7 @@ class eabc:
             #g_add1, g_add2 =  tools.cxTwoPoint(ind1[9:14], ind2[9:14])
             ################
             #Same for ged attributes
-            if random.random()<indpb:
+            if self._rng.random()<indpb:
                 for i,(g1,g2) in enumerate(zip(g_add1,g_add2),start = 8):
                 #Weight eta
                 #for i,(g1,g2) in enumerate(zip(g_add1,g_add2),start = 9):
@@ -294,18 +298,18 @@ class eabc:
             Initial values for breeded individual
 
         """
-        ranges=[np.random.randint(1, QMAX), #BSAS q value bound 
-                np.random.randint(0,2),
-                np.random.randint(0,2),
-                np.random.randint(0,2),
-                np.random.randint(0,2),
-                np.random.randint(0,2),
-                np.random.randint(0,2),
-                np.random.uniform(np.finfo(float).eps, 1)] #Symbol Threshold
+        ranges=[self._rng.integers(1, QMAX), #BSAS q value bound 
+                self._rng.integers(0,2),
+                self._rng.integers(0,2),
+                self._rng.integers(0,2),
+                self._rng.integers(0,2),
+                self._rng.integers(0,2),
+                self._rng.integers(0,2),
+                self._rng.uniform(np.finfo(float).eps, 1)] #Symbol Threshold
                 #np.random.uniform(np.finfo(float).eps, 1)] #Test eta
         
         if self._problemName ==  'GREC':
-            additional  = [np.random.uniform(0, 1) for _ in range(5)]
+            additional  = [self._rng.uniform(0, 1) for _ in range(5)]
             ranges = ranges + additional
             
         return ranges
