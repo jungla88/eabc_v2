@@ -38,13 +38,20 @@ class Rewarder:
         
         for model,performance in models_with_performance:
                 for symbol in model:
+                    if symbol.quality > 100 or symbol.quality<-100:
+                        print("Stop")
                     if performance <= 0.5:
                         symbol.quality = symbol.quality-1
                     elif performance >= 0.95:
                          symbol.quality = symbol.quality+10
                     else:
                          symbol.quality = symbol.quality+1
-    
+                    
+                    #Debug
+
+                        
+                    
+
     def applyAgentReward(self,agents,alphabet):
                 
     #    scaledAgentQs, scaledSymbolQs = normalizeFitness(agents,alphabet)
