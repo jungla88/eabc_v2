@@ -9,7 +9,6 @@ import copy
 
 from sklearn.neighbors import KNeighborsClassifier as KNN
 from sklearn.metrics import confusion_matrix,balanced_accuracy_score
-from sklearn.ensemble import VotingClassifier
 
 from Datasets.IAM import IamDotLoader
 from Datasets.IAM import Letter,GREC,AIDS
@@ -17,7 +16,6 @@ from eabc.datasets import graph_nxDataset
 from eabc.extractors import Extractor
 from eabc.extractors import randomwalk_restart
 from eabc.embeddings import SymbolicHistogram
-#from eabc.environments.nestedFS import eabc_Nested
 from eabc.environments.binaryGED_Eabc import eabc
 #TOBE MOVED
 from eabc.extras import eabc_modelGen
@@ -167,7 +165,7 @@ def main(dataTR,dataVS,dataTS,
                 #
                 alpha = 0.99 #To be setted on cmdline
                 #
-                modelPerformances[i] = alpha*J + (1-alpha)*(1-(modelSize/len(mergedClassAlphabets))) 
+                modelPerformances[i] = J #alpha*J + (1-alpha)*(1-(modelSize/len(mergedClassAlphabets))) 
                 ####
                 classificationModel[i] = classifier
 
@@ -236,7 +234,7 @@ def main(dataTR,dataVS,dataTS,
         
         embeddingStrategy = SymbolicHistogram(isSymbolDiss=True,isParallel=False)
         
-    #     #Embedding with current symbols
+        #Embedding with current symbols
         embeddingStrategy.getSet(expTSSet, model_)
         TSembeddingMatrix = np.asarray(embeddingStrategy._embeddedSet)
         TSpatternID = embeddingStrategy._embeddedIDs
@@ -348,7 +346,7 @@ if __name__ == "__main__":
         pool = multiprocessing.Pool()
         toolbox.register("map", pool.map)
 
-    eabc = eabc(DissimilarityClass=Dissimilarity,problemName = name,DissNormFactors=weights)
+    eabc = eabc(DissimilarityClass=Dissimilarity,problemName = name,DissNormFactors=weights,seed = npRng)
     
     #Q scaling
     scale_factor = len(np.unique(dataTR.labels,dataVS.labels,dataTS.labels)[0])
@@ -370,33 +368,43 @@ if __name__ == "__main__":
     #Decorator bound    
     toolbox.decorate("mate", eabc.checkBounds(scaledQ))
     toolbox.decorate("mutate", eabc.checkBounds(scaledQ))
+  
+#    LogAgents,LogPerf,ClassAlphabets,previousModels,previousModelsPerf,previousClassifiers,ensembleClassifier,TSembeddingSpaces,predictedTSLabels,dataTR.labels,dataVS.labels,dataTS.labels
+    data=main(dataTR,
+              dataVS,
+              dataTS,
+              N_subgraphs,
+              classBucketCard,
+              bestModelsCard,
+              numRandModel,
+              numRecombModel,
+              mu,
+              lambda_,
+              ngen,
+              maxorder,
+              CXPROB,
+              MUTPROB,
+              npRng)
     
-    LogAgents,LogPerf,ClassAlphabets,previousModels,previousModelsPerf,previousClassifiers,ensembleClassifier,TSembeddingSpaces,predictedTSLabels,dataTR.labels,dataVS.labels,dataTS.labels=main(dataTR,
-                                                                                                                                                                                                  dataVS,
-                                                                                                                                                                                                  dataTS,
-                                                                                                                                                                                                  N_subgraphs,
-                                                                                                                                                                                                  classBucketCard,
-                                                                                                                                                                                                  bestModelsCard,
-                                                                                                                                                                                                  numRandModel,
-                                                                                                                                                                                                  numRecombModel,
-                                                                                                                                                                                                  mu,
-                                                                                                                                                                                                  lambda_,
-                                                                                                                                                                                                  ngen,
-                                                                                                                                                                                                  maxorder,
-                                                                                                                                                                                                  CXPROB,
-                                                                                                                                                                                                  MUTPROB,
-                                                                                                                                                                                                  npRng)
-    
+    LogAgents = data[0]
+    LogPerf = data[1]
+    ClassAlphabets = data[2]
+    finalModel = data[3]
+    finalModelPerf = data[4]
+    finalClassifiers = data[5]
+    finalEOC = data[6]
+    testEmbeddings = data[7]
+    predictedTSLabels = data[8]
     
 
     pickle.dump({'Name': name,
-                 'Path': path,
-                 'CrossOverPr':CXPROB,
-                 'MutationPr':MUTPROB,
-                 'IndXoverPr':INDCXP,
-                 'IndMutPr':INDMUTP,
-                 'TournamentSize':TOURNSIZE,
-                 'Seed':seed,
+                  'Path': path,
+                  'CrossOverPr':CXPROB,
+                  'MutationPr':MUTPROB,
+                  'IndXoverPr':INDCXP,
+                  'IndMutPr':INDMUTP,
+                  'TournamentSize':TOURNSIZE,
+                  'Seed':seed,
                 'Agents':LogAgents,
                 'PerformancesTraining':LogPerf,
                 'ClassAlphabets':ClassAlphabets,
