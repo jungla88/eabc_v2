@@ -46,9 +46,7 @@ class SymbolicHistogram(Embedder):
         return self._isSymbolDiss
     
     def getVector(self, elemDecomposition, alphabetSet):
-
-#        self.__sanityCheck()
-        
+       
         histogram = numpy.zeros((len(alphabetSet,)))
         for i,sym in enumerate(alphabetSet): 
             Dissimilarity = self._Dissimilarity if not self._isSymbolDiss else sym.dissimilarity
