@@ -102,7 +102,7 @@ def main(dataTR,dataVS,dataTS,
                 
                 #Run individual and return the partial fitness comp+card
 #                internalClustEval,alphabets = zip(*toolbox.map(toolbox.evaluate, zip(population[swarmClass],subgraphs)))
-                alphabets = toolbox.map(toolbox.evaluate, zip(population[swarmClass],subgraphs))
+                alphabets = list(toolbox.map(toolbox.evaluate, zip(population[swarmClass],subgraphs)))
                 
                 #processing alphabets ids and ownership
                 for agent,alphabet in zip(population[swarmClass],alphabets):
@@ -123,10 +123,29 @@ def main(dataTR,dataVS,dataTS,
             #Merging all class buckets
             mergedClassAlphabets = sum(ClassAlphabets.values(),[])
 
+            # #DEBUG
+            DEBUG = True
+            # if DEBUG:
+            #     pickle.dump({'Name': "Letter_mergedAlphabet",
+            #                   'Alphabet': mergedClassAlphabets,
+            #                   'ClassAlphabet': ClassAlphabets
+            #                 },
+            #                 open('Letter_mergedAlphabet.pkl','wb'))
+            #     return 0
+            
+
             #Models creation stage
             randomGeneratedModels = model_generator.createFromSymbols(ClassAlphabets)
+            
+            #Debug
+            # print(len(randomGeneratedModels[0]),randomGeneratedModels[0][0].Fvalue)
+            
             #Create new model from the current and previous generation
             recombinedModels = model_generator.createFromModels(randomGeneratedModels+previousModels)
+            # print(len(recombinedModels[0]),recombinedModels[0][0].Fvalue)
+            # if DEBUG:
+            #     return 0 
+            
             
             #Merged random models plus recombined models
             candidateModels = randomGeneratedModels + recombinedModels
@@ -138,7 +157,7 @@ def main(dataTR,dataVS,dataTS,
             classificationModel = np.empty((len(candidateModels)),dtype=object) 
             for i,model in enumerate(candidateModels):
                 
-                embeddingStrategy = SymbolicHistogram(isSymbolDiss=True,isParallel=False)
+                embeddingStrategy = SymbolicHistogram(isSymbolDiss=True,isParallel=Parallel)
                 
                 #Embedding with current symbols
                 embeddingStrategy.getSet(expTRSet, model)
@@ -181,15 +200,13 @@ def main(dataTR,dataVS,dataTS,
             #Update generation in rewarder
             rewarder.Gen = gen
             print("Tradeoff model/cluster compactness and card: {}".format(rewarder.modelWeight))
-
-
             
             #Rewarding stage
             
             #reward symbols for model performances
             #FIXME: Symbols not chosen are not rewarded/penalized
             modelsToReward=[[model,perf] for model,perf,classifier in models]
-            rewarder.applySymbolReward(modelsToReward)            
+            rewarder.applySymbolReward(modelsToReward)
             
             for swarmClass in classes:
                 
@@ -216,7 +233,6 @@ def main(dataTR,dataVS,dataTS,
                 print("{} Class symbols qualities".format(swarmClass))
                 print([sym.quality for sym in ClassAlphabets[swarmClass]])
             
-
             previousModels = copy.deepcopy(list(list(zip(*models))[0])) #Orribile list(list())
             previousModelsPerf = copy.deepcopy(list(list(zip(*models))[1]))
             previousClassifiers = copy.deepcopy(list(list(zip(*models))[2]))
@@ -370,21 +386,27 @@ if __name__ == "__main__":
     toolbox.decorate("mutate", eabc.checkBounds(scaledQ))
   
 #    LogAgents,LogPerf,ClassAlphabets,previousModels,previousModelsPerf,previousClassifiers,ensembleClassifier,TSembeddingSpaces,predictedTSLabels,dataTR.labels,dataVS.labels,dataTS.labels
+    import time
+    tic = time.perf_counter()
+    print()
     data=main(dataTR,
-              dataVS,
-              dataTS,
-              N_subgraphs,
-              classBucketCard,
-              bestModelsCard,
-              numRandModel,
-              numRecombModel,
-              mu,
-              lambda_,
-              ngen,
-              maxorder,
-              CXPROB,
-              MUTPROB,
-              npRng)
+                  dataVS,
+                  dataTS,
+                  N_subgraphs,
+                  classBucketCard,
+                  bestModelsCard,
+                  numRandModel,
+                  numRecombModel,
+                  mu,
+                  lambda_,
+                  ngen,
+                  maxorder,
+                  CXPROB,
+                  MUTPROB,
+                  npRng)
+
+    toc = time.perf_counter()
+    print(f"Execution tine {toc - tic:0.4f} seconds when Parallel is {Parallel}")
     
     LogAgents = data[0]
     LogPerf = data[1]
