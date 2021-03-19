@@ -37,24 +37,16 @@ class Rewarder:
     def applySymbolReward(self,models_with_performance):
         
         for model,performance in models_with_performance:
-                for symbol in model:
-                    if symbol.quality > 100 or symbol.quality<-100:
-                        print("Stop")
+                for i,symbol in enumerate(model):
                     if performance <= 0.5:
                         symbol.quality = symbol.quality-1
                     elif performance >= 0.95:
                          symbol.quality = symbol.quality+10
                     else:
                          symbol.quality = symbol.quality+1
-                    
-                    #Debug
-
-                        
-                    
 
     def applyAgentReward(self,agents,alphabet):
-                
-    #    scaledAgentQs, scaledSymbolQs = normalizeFitness(agents,alphabet)
+                        
         symbolQualities = np.asarray([sym.quality for sym in alphabet]).reshape((-1,1))
         symbolInternalQualities = np.asarray([sym.Fvalue for sym in alphabet]).reshape((-1,1))
         
@@ -81,7 +73,7 @@ class Rewarder:
             
         #TODO: make sense normalizing agent fitness in [0,1]?        
         scaledAgentQs = MinMaxScaler().fit_transform(agentQualities.reshape((-1,1)))
-        
+
         for agent,Q,symbolsInQ in zip(agents,scaledAgentQs,agentInternalQualities):
             modelContribuiton = self._modelWeight*Q
             clusterContribution = (1-self._modelWeight)*symbolsInQ
