@@ -11,10 +11,11 @@ import numpy as np
 
 class consensusStrategy:
     
-    def __init__(self,problemName,thr=0.1):
+    def __init__(self,problemName,thr=0.1, constantReward = 5):
         
         self._problemName = problemName
         self._threshold = thr
+        self._constantReward = constantReward
 
     #Naive
     def applyConsensus(self,agents,symbols):
@@ -71,9 +72,8 @@ class consensusStrategy:
     
     
     def _reward(self,sym1,sym2):
-        
-        #symbols quality could be negative. Thus multiply by a constant could worsen the quality
-        sym1.quality *= sym2.quality 
-        sym2.quality *= sym1.quality
+            
+        sym1.quality += self._constantReward
+        sym2.quality += self._constantReward
         
         return 0
