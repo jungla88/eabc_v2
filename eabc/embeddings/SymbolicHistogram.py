@@ -28,10 +28,27 @@ def JobLibHelper(x,IDs,datasetDecomposed,alphabetSet,Dissimilarity):
     boolIDs = IDs == x
     substructIndices = [idx for idx,ids in enumerate(boolIDs) if ids==True]        
     substrDecomposition = datasetDecomposed[substructIndices]
-    h = PgetVector(substrDecomposition.data,alphabetSet,Dissimilarity)            
+    h = PgetVector(substrDecomposition.data,alphabetSet,Dissimilarity)       
     return (h,x)
 ##
-
+# def JobLibHelper(x,IDs,datasetDecomposed,alphabetSet,Dissimilarity):
+  
+#     boolIDs = IDs == x
+#     substructIndices = [idx for idx,ids in enumerate(boolIDs) if ids==True]        
+#     substrDecomposition = datasetDecomposed[substructIndices]
+    
+#     histogram = numpy.zeros((len(alphabetSet,)))
+#     for i,sym in enumerate(alphabetSet): 
+        
+#         Diss = Dissimilarity if Dissimilarity else sym.dissimilarity    
+#         j=0
+#         for item in substrDecomposition.data:
+#                 if Diss(sym.representative,item)<=sym.matchThr:
+#                     j+=1
+                    
+#         e = copy.deepcopy(j)
+#         histogram[i] = e
+#         return (histogram,x)
 
 class SymbolicHistogram(Embedder):
     
