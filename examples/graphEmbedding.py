@@ -39,9 +39,9 @@ npRng = np.random.default_rng(seed)
 print("Loading...")
 parser = Letter.parser
 IAMreadergraph = partial(IAMreader,parser)
-path = "/home/luca/Documenti/Progetti/E-ABC_v2/eabc_v2/Datasets/IAM/Letter3/"
+path = "../Datasets/IAM/Letter3/"
 name = "LetterH"
-data1 = graph_nxDataset(path+"Training/", name, reader = IAMreadergraph,seed=npRng)[:100]
+data1 = graph_nxDataset(path+"Training/", name, reader = IAMreadergraph,seed=npRng)
 
 #Test extr indices
 data1 = data1.shuffle()
@@ -53,29 +53,39 @@ extract_func = randomwalk_restart.extr_strategy(seed = seed)
 subgraph_extr = Extractor(extract_func,seed = seed)
 
 print("Extracting...")
-subgraphs = subgraph_extr.randomExtractDataset(data1, 2000)
 expSubSet = subgraph_extr.decomposeGraphDataset(data1,maxOrder = 5)
 
-grList = list()
-for s in subgraphs.data:
-    # sr = Medoid(s)
-    newGr = Granule(s,graphDist,0.5,0.5,0.5)
-    grList.append(newGr)
+r = np.arange(100,2000,300)
 
-# Repr = Medoid
-# print("Granulating...")
-# granulationStrategy = BsasBinarySearch(graphDist,Repr,0.1)
-# granulationStrategy.granulate(subgraphs)
+for x in r:
+    
+    subgraphs = subgraph_extr.randomExtractDataset(data1, x)
+    
+    grList = list()
+    for s in subgraphs.data:
+	    # sr = Medoid(s)
+	    newGr = Granule(s,graphDist,0.5,0.5,0.5)
+	    grList.append(newGr)
 
-print("Embedding...")
+	# Repr = Medoid
+	# print("Granulating...")
+	# granulationStrategy = BsasBinarySearch(graphDist,Repr,0.1)
+	# granulationStrategy.granulate(subgraphs)
+    
+    print("Embedding with size = {}".format(x))
+    embeddingStrategySingle = SymbolicHistogram(graphDist,isParallel=False)
+    start = time.process_time()
+#  	#embeddingStrategySingle.getSet(expSubSet, granulationStrategy.symbols)
+    embeddingStrategySingle.getSet(expSubSet, grList)
+    print("Serial = {}".format( time.process_time() - start))
+    
+    embeddingStrategyParallel = SymbolicHistogram(graphDist,isParallel=True)
+    start = time.process_time()
+    embeddingStrategyParallel.getSet(expSubSet, grList)
+    print("Parallel = {}".format( time.process_time() - start))
+    
+    singleSet = np.asarray(embeddingStrategySingle.embeddedSet)
+    parallelSet = np.asarray(embeddingStrategyParallel.embeddedSet)
+    assert(np.all(singleSet==parallelSet))    
 
-embeddingStrategySingle = SymbolicHistogram(graphDist,isParallel=False)
-start = time.process_time()
-#embeddingStrategySingle.getSet(expSubSet, granulationStrategy.symbols)
-embeddingStrategySingle.getSet(expSubSet, grList)
-print("Serial = {}".format( time.process_time() - start))
-
-embeddingStrategyParallel = SymbolicHistogram(graphDist,isParallel=True)
-start = time.process_time()
-embeddingStrategyParallel.getSet(expSubSet, grList)
-print("Parallel = {}".format( time.process_time() - start))
+    print("####")
