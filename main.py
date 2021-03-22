@@ -113,32 +113,17 @@ def main(dataTR,dataVS,dataTS,
                 #Concatenate symbols if not empty
                 alphabet = sum(alphabets,[])
 
-                # consensusRewarder.applyConsensus(population[swarmClass],ClassAlphabets[swarmClass])
-
                 #Temporary save overlength alphabet
                 ClassAlphabets[swarmClass] = ClassAlphabets[swarmClass] + alphabet
                 
 
 
             #Merging all class buckets
-            mergedClassAlphabets = sum(ClassAlphabets.values(),[])
-
-            # #DEBUG
-            DEBUG = True
-            # if DEBUG:
-            #     pickle.dump({'Name': "Letter_mergedAlphabet",
-            #                   'Alphabet': mergedClassAlphabets,
-            #                   'ClassAlphabet': ClassAlphabets
-            #                 },
-            #                 open('Letter_mergedAlphabet.pkl','wb'))
-            #     return 0
-            
+            mergedClassAlphabets = sum(ClassAlphabets.values(),[])            
 
             #Models creation stage
             randomGeneratedModels = model_generator.createFromSymbols(ClassAlphabets)
             
-            #Debug
-            # print(len(randomGeneratedModels[0]),randomGeneratedModels[0][0].Fvalue)
             
             #Create new model from the current and previous generation
             recombinedModels = model_generator.createFromModels(randomGeneratedModels+previousModels)
@@ -157,7 +142,7 @@ def main(dataTR,dataVS,dataTS,
             classificationModel = np.empty((len(candidateModels)),dtype=object) 
             for i,model in enumerate(candidateModels):
                 
-                embeddingStrategy = SymbolicHistogram(isSymbolDiss=True,isParallel=Parallel)
+                embeddingStrategy = SymbolicHistogram(isSymbolDiss=True,isParallel=True)
                 
                 #Embedding with current symbols
                 embeddingStrategy.getSet(expTRSet, model)
@@ -248,7 +233,7 @@ def main(dataTR,dataVS,dataTS,
     TSembeddingSpaces = []
     for model_ in previousModels:
         
-        embeddingStrategy = SymbolicHistogram(isSymbolDiss=True,isParallel=False)
+        embeddingStrategy = SymbolicHistogram(isSymbolDiss=True,isParallel=Parallel)
         
         #Embedding with current symbols
         embeddingStrategy.getSet(expTSSet, model_)
@@ -290,15 +275,15 @@ if __name__ == "__main__":
     
     #Algorithm Hyper Params
     N_subgraphs = 100
-    ngen = 1
+    ngen = 20
     classBucketCard = 100
     bestModelsCard = 10
-    numRandModel = 5
-    numRecombModel = 5
+    numRandModel = 10
+    numRecombModel = 10
     
     #Genetic Hyper Params
-    mu = 5
-    lambda_= 5
+    mu = 20
+    lambda_= 20
     maxorder = 5
     CXPROB = 0.45
     MUTPROB = 0.45
@@ -388,7 +373,6 @@ if __name__ == "__main__":
 #    LogAgents,LogPerf,ClassAlphabets,previousModels,previousModelsPerf,previousClassifiers,ensembleClassifier,TSembeddingSpaces,predictedTSLabels,dataTR.labels,dataVS.labels,dataTS.labels
     import time
     tic = time.perf_counter()
-    print()
     data=main(dataTR,
                   dataVS,
                   dataTS,
@@ -406,7 +390,7 @@ if __name__ == "__main__":
                   npRng)
 
     toc = time.perf_counter()
-    print(f"Execution tine {toc - tic:0.4f} seconds when Parallel is {Parallel}")
+    print(f"Execution time {toc - tic:0.4f} seconds when Parallel is {Parallel}")
     
     LogAgents = data[0]
     LogPerf = data[1]
