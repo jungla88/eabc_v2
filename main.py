@@ -165,9 +165,9 @@ def main(dataTR,dataVS,dataTS,
                      
                 J = balanced_accuracy_score(dataVS.labels,predictedVSLabels,adjusted=True)
                 
-                modelSize = len(model)
+                #modelSize = len(model)
                 #
-                alpha = 0.99 #To be setted on cmdline
+                #alpha = 0.99 #To be setted on cmdline
                 #
                 modelPerformances[i] = J #alpha*J + (1-alpha)*(1-(modelSize/len(mergedClassAlphabets))) 
                 ####
@@ -276,7 +276,7 @@ if __name__ == "__main__":
     #Algorithm Hyper Params
     N_subgraphs = 100
     ngen = 20
-    classBucketCard = 100
+    classBucketCard = 120
     bestModelsCard = 10
     numRandModel = 10
     numRecombModel = 10
