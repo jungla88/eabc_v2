@@ -7,14 +7,17 @@ Created on Fri Feb 19 14:56:16 2021
 """
 
 import numpy as np
+import math
 
 class eabc_modelGen:
     
-    def __init__(self,k=5,l=5,INTERSEC_PR=0.33,UNION_PR=0.33,RANDOM_PR=0.33, SWAP_PR=0.15,seed=None):
+    def __init__(self,k=5,l=5,CROSS_PR=0.33,UNION_PR=0.33,RANDOM_PR=0.33, SWAP_PR=0.15,seed=None):
         
         self._K = k #Num random model to create 
         self._L = l #Num model created from previous K model by recombination
-        self._INTERSEC_PR = INTERSEC_PR
+        self._maxLen = 100;
+        
+        self._CROSS_PR = CROSS_PR
         self._UNION_PR = UNION_PR
         self._SWAP_PR = SWAP_PR
         
@@ -27,58 +30,43 @@ class eabc_modelGen:
     def createFromSymbols(self,alphabet):
         
         self.__alphabet_sanity_check(alphabet)        
+
+        #Try to fix model length
+        N = self._estimateNclassSymbols(alphabet)
+        ##
         
-        #All symbols regardless their class
-        mergedAlphabets = sum(alphabet.values(),[])
-    
         models = []
+        
+        
         #Choose K model
         for _ in range(self._K):
             
             model =  np.array([])
             #For each class alphabet extract some symbols
             for class_ in alphabet.keys():
-                
-                
-                #BUG: randomly emit unreasonable values
+                              
 #                    p = self._extractProb(alphabet[class_])        
 
                 #Set model cardinality
-                N = 1
-                if len(alphabet[class_])>1:
-                    N = self._rng.integers(low=1,high= len(alphabet[class_]))
+                if N > len(alphabet[class_]):
+                    N = len(alphabet[class_])
+
+                if N>1: 
+                    N_symb = self._rng.integers(low=1,high= N)
+                else:
+                    N_symb = 1
                 
-                #BUG: too many exception to handle
-                # if len(np.where(p==0))<N and p is not None:
-                #     highAdmittable = len(p)-len(np.where(p==0)[0])
-                #     if highAdmittable>1:
-                #         N = self._rng.integers(low=1,high=highAdmittable )
-                #     else:
-                #         N=1
-                
-                #Extract with p probabiblity
-                #thisModel = self._rng.choice(alphabet[class_],size= N,replace=False,p=p)
-                
+
                 #Extract with uniform probability
-                thisModel = self._rng.choice(alphabet[class_],size= N,replace=False)
+                thisModel = self._rng.choice(alphabet[class_],size= N_symb,replace=False)
                 
                 model = np.concatenate((model,thisModel))
 
             models.append(model)
     
-            #process the symbols with null quality
-            # p = self._extractProb(mergedAlphabets)    
-            # nullSymbolsIndices = np.where(p==0)[0]
-            
-            # nullSymbols= np.asarray(mergedAlphabets,dtype=object)[nullSymbolsIndices]
-            
-            # for item in nullSymbols:
-            #     if self._rng.random()<=0.5: #Flip a coin
-            #         modelIndex = self._rng.choice(len(models))
-            #         np.concatenate((models[modelIndex],np.reshape(item,(1,))))
+
         
         return models
-    
     
     def createFromModels(self,models):
         
@@ -88,7 +76,7 @@ class eabc_modelGen:
             
             choice = self._rng.random()
             
-            if choice<self._INTERSEC_PR:
+            if choice<self._CROSS_PR:
                                             
                 m1_indices,m2_indices = self._rng.choice(len(models), size = 2, replace = False)     
                 m1 = models[m1_indices]
@@ -102,7 +90,7 @@ class eabc_modelGen:
                 m3 = np.asarray(list(set(m3)),dtype = object)
                 models_.append(m3)
                 
-            elif self._INTERSEC_PR  <= choice < self._UNION_PR + self._INTERSEC_PR:
+            elif self._CROSS_PR  <= choice < self._UNION_PR + self._CROSS_PR:
                 
                 m1_indices,m2_indices = self._rng.choice(len(models), size = 2, replace = False)     
                 
@@ -137,18 +125,25 @@ class eabc_modelGen:
         
         return models_
                 
-    # def _extractProb(self,alphabet):
+    def _extractProb(self,alphabet):
         
-    #     q = [sym.quality if sym.quality > 0 else 0 for sym in alphabet]
-    #     overallQ = sum(q)
+        q = [sym.quality if sym.quality > 0 else 0 for sym in alphabet]
+        overallQ = sum(q)
 
-    #     p = np.asarray(q)/overallQ
+        p = np.asarray(q)/overallQ
 
-    #     if np.isnan(p).all() or np.all(p==0):
-    #         p = None
+        if np.isnan(p).all() or np.all(p==0):
+            p = None
         
         
-    #     return p
+        return p
+    
+    def _estimateNclassSymbols(self,alphabet):
+        
+        n_classes = len(alphabet.keys())
+        
+        return math.ceil(self._maxLen/n_classes)  
+        
     
     @staticmethod
     def __alphabet_sanity_check(alphabet):
