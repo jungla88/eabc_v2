@@ -213,9 +213,7 @@ class eabc_Nested:
         symbols = granulationStrategy.symbols
         for symbol in symbols:
             symbol.owner = ID
-            
-        individual.alphabetSize = len(symbols)
-        
+                    
         return (fitness,), symbols
     
     @staticmethod
