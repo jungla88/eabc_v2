@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 import numpy as np
 from sklearn.preprocessing import MinMaxScaler
+from scipy.stats import norm
+
 class Rewarder:
     def __init__(self,MAX_GEN=20, isBootStrapped = True):
         
@@ -10,9 +12,12 @@ class Rewarder:
         self.gen = 0
         #tradeoff weight between model contribution and internal cluster quality
         self._modelWeight = 0
-        #set bootstrapping on
         self._isBootStrapped = isBootStrapped
         
+        #Test reward with mean and var
+        self._meanModelPerformances = None
+        self._stdModelPerformances = None
+        self._scaleFactor = 10
         
     @property
     def Gen(self):
@@ -34,16 +39,42 @@ class Rewarder:
         return self._isBootStrapped
     
     
+    def evaluateReward(self,models_with_performance):
+        
+        p = np.asarray([perf for _,perf in models_with_performance])
+        
+        self._meanModelPerformances = p.mean()
+        self._stdModelPerformances = p.std()
+        
+
+    # def applySymbolReward(self,models_with_performance):
+        
+    #     for model,performance in models_with_performance:
+    #             for i,symbol in enumerate(model):
+    #                 if performance <= 0.5:
+    #                     symbol.quality = symbol.quality-1
+    #                 elif performance >= 0.95:
+    #                      symbol.quality = symbol.quality+10
+    #                 else:
+    #                      symbol.quality = symbol.quality+1
+
     def applySymbolReward(self,models_with_performance):
         
         for model,performance in models_with_performance:
-                for i,symbol in enumerate(model):
-                    if performance <= 0.5:
-                        symbol.quality = symbol.quality-1
-                    elif performance >= 0.95:
-                         symbol.quality = symbol.quality+10
-                    else:
-                         symbol.quality = symbol.quality+1
+            
+            pVal  = norm.pdf(performance,self._meanModelPerformances,self._stdModelPerformances)
+            valAtmean = norm.pdf(self._meanModelPerformances,self._meanModelPerformances,self._stdModelPerformances)
+            
+            for symbol in model:
+                
+                if performance >= self._meanModelPerformances + self._stdModelPerformances:
+
+                    symbol.quality = symbol.quality +  self._scaleFactor*(valAtmean - pVal)
+                    
+                elif performance <= self._meanModelPerformances - self._stdModelPerformances:
+                    
+                    symbol.quality = symbol.quality - self._scaleFactor*(valAtmean - pVal)
+                    
 
     def applyAgentReward(self,agents,alphabet):
                         
