@@ -309,7 +309,7 @@ class eabc:
                 #np.random.uniform(np.finfo(float).eps, 1)] #Test eta
         
         if self._problemName ==  'GREC':
-            additional  = [self._rng.uniform(0, 1) for _ in range(5)]
+            additional  = [self._rng.integers(0, 2) for _ in range(5)]
             ranges = ranges + additional
             
         return ranges
