@@ -11,18 +11,20 @@ import numpy as np
 
 class consensusStrategy:
     
-    def __init__(self,problemName,thr=0.1, constantReward = 5):
+#    def __init__(self,problemName, GEDretriever, thr=0.1, constantReward = 5):
+    def __init__(self,GEDretriever, thr=0.1, constantReward = 5):        
         
-        self._problemName = problemName
+#        self._problemName = problemName
         self._threshold = thr
         self._constantReward = constantReward
+        self._GEDretr = GEDretriever
+        
 
     #Naive
     def applyConsensus(self,agents,symbols):
 
-
-        #TODO: set a user defined lambda that select metric parameters
-        for commonMetric,group in groupby(agents,lambda x: x[1:7]):
+        for commonMetric,group in groupby(agents,self._GEDretr):
+#        for commonMetric,group in groupby(agents,lambda x: x[1:7]):
             
             g = tuple(group)
             
@@ -50,24 +52,6 @@ class consensusStrategy:
                     for i,j in zip(symbolpairs[0],symbolpairs[1]):
                         self._reward(symbols1[i],symbols2[j])
                         
-                    # #column indices of minimum values on rows
-                    # minIndices = np.argmin(M,axis = 0)
-
-                    #their distance values
-#                    minDistances = np.choose(minIndices,M)
-                    
-                    #find which rows satisfy the threshold
-#                    symbols_j = np.where(minDistances<= self._threshold)[0]
-                    #
-                    #symbols_i = minIndices[symbols_j]
-                    
-                    #First column indicate the row of the matrix, the second the column
-#                    symbolspair_indices = np.vstack((symbols_i,symbols_j)).T
-                    
-#                    for row in symbolspair_indices:
-#                        self._reward(symbols1[row[0]],symbols2[row[1]])
-                    
-        
         return 0
     
     
