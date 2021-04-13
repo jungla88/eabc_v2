@@ -132,38 +132,6 @@ def main(dataTR,dataVS,dataTS,N_subgraphs,mu,lambda_,ngen,maxorder,cxpb,mutpb,se
                     
                 #Concatenate symbols if not empty
                 alphabets = sum(alphabets,[])
-                
-                #
-#                 from scipy.spatial.distance import squareform
-# #                if gen>0:
-#                 metrics = np.zeros((len(alphabets),6))
-#                 for i,sym in enumerate(alphabets):
-#                     d = sym._DissimilarityMeasure
-#                     nodeP = [d.nodeInsWeight, d.nodeDelWeight, d.nodeSubWeight]
-#                     edgeP = [d.edgeInsWeight, d.edgeDelWeight, d.edgeSubWeight]
-#                     params = nodeP+edgeP
-#                     metrics[i] = np.asarray(params,dtype=float)
-#                 X = squareform(pdist(metrics))/np.sqrt(len(params))
-#                 clustering =  DBSCAN(eps=0.1, min_samples=2,metric="precomputed")
-#                 clustering.fit(X)
-#                 clustRes = clustering.labels_
-#                 mergedClust =[]
-#                 for label in clustRes:
-#                     if label >= 0:
-#                         symbolsClust = np.where(clustRes==label)[0].tolist()
-#                         graphs,diss  = zip(*[[alphabets[i].representative,alphabets[i].dissimilarity] for i in symbolsClust])
-#                         M = squareform(diss[0].pdist(graphs))
-#                         clustering =  DBSCAN(eps=0.2, min_samples=2,metric="precomputed")
-#                         clustering.fit(M)
-#                         labRes = clustering.labels_
-#                         for l in labRes:
-#                             cl = np.where(labRes == l)[0]
-#                             dissCl = M[np.ix_(cl, cl)]
-#                             s = cl[np.argmin(np.sum(dissCl))]
-#                             mergedClust.append(s)
-
-#                 alphabets = [alphabets[i] for i in mergedClust]
-                #
                     
                 #Restart with previous symbols
                 thisGenClassAlphabet = alphabets + ClassAlphabets[swarmClass]
