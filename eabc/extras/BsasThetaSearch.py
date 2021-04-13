@@ -29,7 +29,7 @@ import numpy
     
 #     return partition
 
-def BinarySearch(dataset, clusteringProcedure,tStep):
+def LinearSearch(dataset, clusteringProcedure,tStep):
     r""" Ensemble of partition with a Recursive Binary search strategy.
     Input:
     - tm: lower bound
@@ -63,9 +63,7 @@ def BinarySearch(dataset, clusteringProcedure,tStep):
             partition[thetas[i]] = p
         if numClust==numClustMax:
             break
-        
-    #recursiveBSP(0,1,numClustMin,numClustMax,dataset,tStep,partition,clusteringProcedure)
-    
+            
     return partition
     
 #TODO: Return correct partition only for latest if condition. The clustering procedure

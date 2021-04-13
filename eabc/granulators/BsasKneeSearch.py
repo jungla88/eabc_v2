@@ -3,11 +3,11 @@
 from eabc.granulators import Granulator
 from eabc.granulators import Granule
 from eabc.extras import BSAS
-from eabc.extras.BinarySearch import BinarySearch
+from eabc.extras.BsasThetaSearch import LinearSearch
 
 from kneed import KneeLocator
 
-class BsasBinarySearch(Granulator):
+class BsasKneeSearch(Granulator):
     
     #TEST: Trying normalization of F value fo min-max approach
     def __init__(self,DistanceFunction,clusterRepresentative,tStep=0.1,Qmax=100):
@@ -36,7 +36,7 @@ class BsasBinarySearch(Granulator):
         
     def granulate(self,Dataset):
         
-        partitions = BinarySearch(Dataset.data,self._method,self._tStep)
+        partitions = LinearSearch(Dataset.data,self._method,self._tStep)
         
         #Select partition based on persistence
         # gap = 0
@@ -73,14 +73,14 @@ class BsasBinarySearch(Granulator):
         #                       if len(clustersLabels)>1 else 1 for l in range(nClust)]
         #     normalizeComp = [reprElems[l]._SOD/(len(clustersLabels[l])-1) 
         #                       if len(clustersLabels[l])>1 else 1 for l in range(nClust)]
-            
+          
         #     for i,repres in enumerate(reprElems):
         #         F = super(BsasBinarySearch,self)._evaluateF(normalizeComp[i],normalizeCard[i])
         #         newGr = Granule(repres._representativeElem,self._distanceFunction,F,normalizeCard[i],normalizeComp[i])
         #         super(BsasBinarySearch,self)._addSymbol(newGr)
         
         # singleton or universe clusters        
-        clustersLabels,reprElems = super(BsasBinarySearch,self)._removeSingularity(clustersLabels,reprElems,Dataset)
+        clustersLabels,reprElems = super(BsasKneeSearch,self)._removeSingularity(clustersLabels,reprElems,Dataset)
             
         nClust = len(reprElems)
         #Evaluation - Lower is better
@@ -89,6 +89,6 @@ class BsasBinarySearch(Granulator):
 
         for i,repres in enumerate(reprElems):
             
-            F = super(BsasBinarySearch,self)._evaluateF(normalizeComp[i],normalizeCard[i])
+            F = super(BsasKneeSearch,self)._evaluateF(normalizeComp[i],normalizeCard[i])
             newGr = Granule(repres._representativeElem,self._distanceFunction,F,normalizeCard[i],normalizeComp[i])
-            super(BsasBinarySearch,self)._addSymbol(newGr)
+            super(BsasKneeSearch,self)._addSymbol(newGr)

@@ -8,71 +8,84 @@ from eabc.extractors import randomwalk_restart
 from eabc.granulators import BsasBinarySearch
 from eabc.representatives import Medoid
 from eabc.embeddings import SymbolicHistogram 
+from eabc.granulators import Granule
+
 import networkx as nx
 import numpy as np
+from Datasets.IAM import IamDotLoader
+from Datasets.IAM import Letter,GREC,AIDS
+from functools import partial
 
 import time
 
-#from numba import njit,jitclass
-
-# @jitclass
-def nodeDissimilarity(a, b):
-    return np.linalg.norm(np.asarray(a['attributes']) - np.asarray(b['attributes'])) / np.sqrt(2)
-
-# @jitclass
-def edgeDissimilarity(a,b):
-    return 0.0
+def IAMreader(parser,path):
     
-def readergraph(path):
-    graphs_nx = reader.tud_to_networkx("Letter-high")
-    classes = [g.graph['classes'] for g in graphs_nx]
-    return graphs_nx, classes 
+    delimiters = "_", "."      
+    
+    Loader = IamDotLoader.DotLoader(parser,delimiters=delimiters)
+    
+    graphDict = Loader.load(path)
+    
+    graphs,classes=[],[]
+    for g,label in graphDict.values():
+        graphs.append(g)
+        classes.append(label)
+    
+    return graphs, classes 
 
+
+seed = 0
+npRng = np.random.default_rng(seed)
 print("Loading...")
-data1 = graph_nxDataset("/home/luca/Documenti/Progetti/E-ABC_v2/eabc_v2/Datasets/tudataset/Letter-high", "LetterH", reader = readergraph)
-#Removed not connected graph and null graph!
-cleanData=[]
-for g,idx,label in zip(data1.data,data1.indices,data1.labels):
-    if not nx.is_empty(g):
-        if nx.is_connected(g):
-            cleanData.append((g,idx,label)) 
-#cleanData = [(g,idx,label) for g,idx,label in zip(data1.data,data1.indices,data1.labels) if not nx.is_empty(g)]
-
-cleanData = np.asarray(cleanData,dtype=object)
-data1 = graph_nxDataset([cleanData[:,0],cleanData[:,2]],"Letter")
-data1= data1[0:100]
+parser = Letter.parser
+IAMreadergraph = partial(IAMreader,parser)
+path = "../Datasets/IAM/Letter3/"
+name = "LetterH"
+data1 = graph_nxDataset(path+"Training/", name, reader = IAMreadergraph,seed=npRng)
 
 #Test extr indices
 data1 = data1.shuffle()
 
-graphDist = BMF(nodeDissimilarity,edgeDissimilarity)
+Dissimilarity = Letter.LETTERdiss()
+graphDist = BMF(Dissimilarity.nodeDissimilarity,Dissimilarity.edgeDissimilarity)
 
-strat = randomwalk_restart.extr_strategy(max_order=6)
-subgraph_extr = Extractor(strat)
+extract_func = randomwalk_restart.extr_strategy(seed = seed)
+subgraph_extr = Extractor(extract_func,seed = seed)
 
 print("Extracting...")
-subgraphs = subgraph_extr.randomExtractDataset(data1, 10000)
+expSubSet = subgraph_extr.decomposeGraphDataset(data1,maxOrder = 5)
 
-Repr= Medoid
+r = np.arange(100,2000,300)
 
-print("Granulating...")
-granulationStrategy = BsasBinarySearch(graphDist,Repr,0.1)
-granulationStrategy.granulate(subgraphs)
+for x in r:
+    
+    subgraphs = subgraph_extr.randomExtractDataset(data1, x)
+    
+    grList = list()
+    for s in subgraphs.data:
+	    # sr = Medoid(s)
+	    newGr = Granule(s,graphDist,0.5,0.5,0.5)
+	    grList.append(newGr)
 
-print("Embedding...")
-expSet = subgraphs.fresh_dpcopy()
-for i,x in enumerate(data1):
-    for j in range(1000):
-        expSet.add_keyVal(data1.to_key(i),subgraph_extr.extract(x))
+	# Repr = Medoid
+	# print("Granulating...")
+	# granulationStrategy = BsasBinarySearch(graphDist,Repr,0.1)
+	# granulationStrategy.granulate(subgraphs)
+    
+    print("Embedding with size = {}".format(x))
+    embeddingStrategySingle = SymbolicHistogram(graphDist,isParallel=False)
+    start = time.process_time()
+#  	#embeddingStrategySingle.getSet(expSubSet, granulationStrategy.symbols)
+    embeddingStrategySingle.getSet(expSubSet, grList)
+    print("Serial = {}".format( time.process_time() - start))
+    
+    embeddingStrategyParallel = SymbolicHistogram(graphDist,isParallel=True)
+    start = time.process_time()
+    embeddingStrategyParallel.getSet(expSubSet, grList)
+    print("Parallel = {}".format( time.process_time() - start))
+    
+    singleSet = np.asarray(embeddingStrategySingle.embeddedSet)
+    parallelSet = np.asarray(embeddingStrategyParallel.embeddedSet)
+    assert(np.all(singleSet==parallelSet))    
 
-embeddingStrategy = SymbolicHistogram(graphDist) #Parallel
-embeddingStrategySingle = SymbolicHistogram(graphDist,isParallel=False)
-
-start = time.process_time()
-embeddingStrategy.getSet(expSet, granulationStrategy.symbols)
-print(time.process_time() - start)
-
-embeddingStrategySingle = SymbolicHistogram(graphDist,isParallel=False)
-start = time.process_time()
-embeddingStrategySingle.getSet(expSet, granulationStrategy.symbols)
-print(time.process_time() - start)
+    print("####")

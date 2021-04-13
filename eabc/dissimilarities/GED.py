@@ -200,7 +200,7 @@ class BMF(Dissimilarity):
                 x_l = self.__call__(set1[i],set1[j])
                 x_r = self.__call__(set1[j],set1[i])    
                 M[idx] = 0.5*(x_l+x_r) 
-#                    next_idx = (j-1)*(len(set1)-1)+(i-1)
+
         else:
             #Return the dissimilarity matrix 
             #Naive way.
@@ -210,4 +210,19 @@ class BMF(Dissimilarity):
                 M[i]= row;
         
         return M
+    
+    #Force by default the symmetry
+    def pdist2(self,set1,set2):
         
+        M = np.zeros(shape= (len(set1),len(set2)))
+        
+        #cartesian product is inefficient?
+        for i,g1 in enumerate(set1):
+            for j,g2 in enumerate(set2):
+                
+                x_l = self.__call__(g1,g2)
+                x_r = self.__call__(g2,g1)
+                
+                M[i,j] = 0.5*(x_l+x_r)
+
+        return M

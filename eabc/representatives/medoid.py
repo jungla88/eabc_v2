@@ -3,12 +3,7 @@
 from eabc.representatives import Representative
 import scipy.spatial.distance as scpDist
 import numpy as np
-import eabc.dissimilarities
 
-from eabc.representatives import Representative
-import scipy.spatial.distance as scpDist
-import numpy as np
-import eabc.dissimilarities
 
 class Medoid(Representative):
 

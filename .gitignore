@@ -8,6 +8,8 @@ Datasets/iris
 Datasets/IAM/COIL*
 Datasets/IAM/Mut*
 Datasets/IAM/Prot*
+log_loader.out
+*.pkl
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

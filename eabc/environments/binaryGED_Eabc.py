@@ -8,15 +8,19 @@ Created on Tue Dec 15 11:44:14 2020
 
 from eabc.representatives import Medoid
 from eabc.dissimilarities import BMF
-from eabc.granulators import BsasBinarySearch
+from eabc.granulators import BsasKneeSearch
 
 import numpy as np
 from deap import tools
+
 import random
 
-class eabc_Nested:
+class eabc:
     
-    def __init__(self,DissimilarityClass,problemName,DissNormFactors = None):
+    def __init__(self,DissimilarityClass,problemName,DissNormFactors = None,seed = None):
+        
+        self._rng = np.random.default_rng(seed) 
+
         
         self._problemName = problemName
         self._dissimilarityClass = DissimilarityClass
@@ -66,7 +70,7 @@ class eabc_Nested:
         ind1[0]=g_q1[0]
         ind2[0]=g_q2[0]
         #two point crossover individuals are always modified. We edit this slice of genetic code only if condition is valid
-        if random.random()<indpb:
+        if self._rng.random()<indpb:
             for i,(g1,g2) in enumerate(zip(g_ged1,g_ged2),start = 1):
                 ind1[i]=g1
                 ind2[i]=g2
@@ -87,7 +91,7 @@ class eabc_Nested:
             #g_add1, g_add2 =  tools.cxTwoPoint(ind1[9:14], ind2[9:14])
             ################
             #Same for ged attributes
-            if random.random()<indpb:
+            if self._rng.random()<indpb:
                 for i,(g1,g2) in enumerate(zip(g_add1,g_add2),start = 8):
                 #Weight eta
                 #for i,(g1,g2) in enumerate(zip(g_add1,g_add2),start = 9):
@@ -112,16 +116,36 @@ class eabc_Nested:
         
         Description
         ------
-        Each individual gene in in is mutated with dea mutGaussian function.
+        Each individual gene in in is mutated with deap mutGaussian function.
         Gaussian mean should be null, whereas the sigma is defined as a sequence for each guassian as required by deap mutGaussian
         """
-#        mu = [ind[i] for i in range(len(ind))]
         sigmaQ = [10]
-        sigma01 = [0.2 for _ in range(len(ind))]
-        #Assuming genes  [Q, 01bounded, ... ]
-        sigma = sigmaQ+sigma01
-        return tools.mutGaussian(ind, mu, sigma, indpb)
         
+        gedW = ind[1:7]
+        mutatedwGed = tools.mutFlipBit(gedW, indpb)[0]
+        
+        
+        #Assuming Q integer, tau real [0,1]
+        sigmaQ = [10]
+        sigmaTau = [0.2]
+        sigma = sigmaQ+sigmaTau
+        
+        mutQ_tau = tools.mutGaussian([ind[0],ind[7]], mu, sigma, indpb)
+        
+        #Assign new genes to the individual
+        ind[0] = mutQ_tau[0][0] #Q
+        for i,gene in enumerate(mutatedwGed,start = 1):
+            ind[i] = gene # GED
+        ind[7] = mutQ_tau[0][1] #Tau
+
+        if self._problemName ==  'GREC':
+            gedAdditionalW = ind[8:13]
+            mutatedAddwGed = tools.mutFlipBit(gedAdditionalW, indpb)[0]
+            for i,gene in enumerate(mutatedAddwGed,start = 8):
+                ind[i]=gene
+
+        return ind,
+    
     def fitness(self,args):    
         """
         
@@ -194,7 +218,7 @@ class eabc_Nested:
         graphDist.edgeInsWeight=wEIns
         graphDist.edgeDelWeight=wEDel
         
-        granulationStrategy = BsasBinarySearch(graphDist,Repr,0.1)
+        granulationStrategy = BsasKneeSearch(graphDist,Repr,0.1)
         granulationStrategy.BsasQmax = Q
         granulationStrategy.symbol_thr = tau
         ####ETA
@@ -202,22 +226,19 @@ class eabc_Nested:
         ####
 
         granulationStrategy.granulate(granulationBucket)
-        f_sym = np.array([symbol.Fvalue for symbol in granulationStrategy.symbols])
+        # f_sym = np.array([symbol.Fvalue for symbol in granulationStrategy.symbols])
     
-        #f_sym is better when lower. The problem is casted for maximasation
-        f = 1-np.average(f_sym) if f_sym.size!=0 else np.nan     
+        # #f_sym is better when lower. The problem is casted for maximasation
+        # f = 1-np.average(f_sym) if f_sym.size!=0 else np.nan     
         
-        fitness = f if not np.isnan(f) else 0
+        # fitness = f if not np.isnan(f) else 0
         
-        ID = individual.ID
         symbols = granulationStrategy.symbols
-        for symbol in symbols:
-            symbol.owner = ID
-                    
-        return (fitness,), symbols
+        
+        return symbols
     
-    @staticmethod
-    def checkBounds(QMAX):
+#    @staticmethod
+    def checkBounds(self,QMAX):
         """
         Parameters
         ----------
@@ -230,7 +251,8 @@ class eabc_Nested:
         
         Description
         -------
-        First gene is bounded in [1,Qmax] and [0,1] otherwise.
+        Takes as input a tuple of individual. A single individual must be contained in the tuple.
+        First gene is bounded in [1,Qmax] and [0,1] binary otherwise.
         """
         def decorator(func):
             def wrapper(*args, **kargs):
@@ -241,11 +263,21 @@ class eabc_Nested:
                        child[0] = 1
                     elif child[0]>QMAX:
                         child[0] = QMAX
-                    for i in range(1,len(child)):
+                    for i in range(1,7): #GED weights
                         if child[i] > 1:
                             child[i] = 1
-                        elif child[i] <= 0:
-                            child[i] = np.finfo(float).eps
+                        elif child[i] < 0:
+                            child[i] = 0
+                    if child[7] > 1: #tau
+                        child[7] = 1
+                    elif child[7]<=0:
+                        child[7] = np.finfo(float).eps
+                    if self._problemName == 'GREC':
+                        for i in range(8,13):
+                            if child[i]>1:
+                                child[i]=1
+                            elif child[i]<0:
+                                child[1]=0
                 return offspring
             return wrapper
         return decorator
@@ -266,18 +298,18 @@ class eabc_Nested:
             Initial values for breeded individual
 
         """
-        ranges=[random.randint(1, QMAX), #BSAS q value bound 
-                random.uniform(0, 1), #GED node wcosts
-                random.uniform(0, 1),
-                random.uniform(0, 1),
-                random.uniform(0, 1), #GED edge wcosts
-                random.uniform(0, 1),
-                random.uniform(0, 1),
-                random.uniform(np.finfo(float).eps, 1)] #Symbol Threshold
+        ranges=[self._rng.integers(1, QMAX), #BSAS q value bound 
+                self._rng.integers(0,2),
+                self._rng.integers(0,2),
+                self._rng.integers(0,2),
+                self._rng.integers(0,2),
+                self._rng.integers(0,2),
+                self._rng.integers(0,2),
+                self._rng.uniform(np.finfo(float).eps, 1)] #Symbol Threshold
                 #np.random.uniform(np.finfo(float).eps, 1)] #Test eta
         
         if self._problemName ==  'GREC':
-            additional  = [random.uniform(0, 1) for _ in range(5)]
+            additional  = [self._rng.integers(0, 2) for _ in range(5)]
             ranges = ranges + additional
             
         return ranges
