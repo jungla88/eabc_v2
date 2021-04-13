@@ -4,7 +4,7 @@ from eabc.embeddings import Embedder
 import numpy
 import copy
 from joblib import Parallel, delayed,cpu_count
-
+from joblib.externals.loky import get_reusable_executor
 ##Helper functions for Joblib
 # def PgetVector(elemDecomposition, alphabetSet,Dissimilarity):
 

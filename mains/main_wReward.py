@@ -22,7 +22,7 @@ from eabc.environments.binaryGED_Eabc import eabc
 from eabc.extras import eabc_modelGen
 from eabc.extras import Rewarder
 from eabc.extras import consensusStrategy
-from eabc.extras import StackClassifiers
+from eabc.extras import StackClassifier
 from eabc.extras import GEDretriever
 
 def IAMreader(parser,path):
@@ -263,6 +263,11 @@ def main(dataTR,dataVS,dataTS,
     
     print("Test phase")
     
+    
+    #
+    pool.close()
+    #
+    
     print("Embedding Test Set")
     TSembeddingSpaces = []
     for model_ in previousModels:
@@ -281,7 +286,7 @@ def main(dataTR,dataVS,dataTS,
         TSembeddingSpaces.append(TSMat)
 
     print("Building ensemble of classifiers...")
-    ensembleClassifier = StackClassifiers(previousClassifiers,isPrefit=True)
+    ensembleClassifier = StackClassifier(previousClassifiers,isPrefit=True)
     ensembleClassifier.fit(labels=dataTR.labels)
     predictedTSLabels = ensembleClassifier.predict(TSembeddingSpaces)
     
@@ -299,7 +304,7 @@ if __name__ == "__main__":
     ###
     parser.add_argument("-name", type=str,
                     help="Dataset name")    
-    parser.add_argument("-W", type=str,
+    parser.add_argument("-W", type=int,
                     help="Number of subgraphs per agent")    
 
     parser.add_argument("-g", "--max_gen", type=int, default = 20, help="Maximum number of generations",
