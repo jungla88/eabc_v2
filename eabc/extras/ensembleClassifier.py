@@ -5,9 +5,9 @@ from sklearn import preprocessing
 from sklearn.utils.validation import check_X_y, check_array, check_is_fitted,_is_arraylike
 import warnings 
 
-class StackClassifiers:
+class StackClassifier:
     
-    def __init__(self,estimators = None, isPrefit = True, weights=None):
+    def __init__(self,estimators = None, isPrefit = True, weights=None,decisionRule = None):
         
         self.__estimators_sanity_check(estimators,isPrefit)
         
@@ -18,31 +18,35 @@ class StackClassifiers:
         self._classes = None
         self._weights = None
         
+        self._rule = self._majorityVoting
+        if decisionRule is not None:
+            self._rule = decisionRule        
         
     def fit(self,instances=None,labels=None):
+
+        if labels is None:
+            raise ValueError('labels must be passed')
 
         self._le = preprocessing.LabelEncoder().fit(labels)
         self._classes = self._le.transform(self._le.classes_)
         
-        if self._prefit and instances:
+        if self._prefit==True and instances is not None:
             warnings.warn("Ignoring passed instances",RuntimeWarning)
             
-        elif self._prefit==False and not(instances):
+        elif self._prefit==False and instances is None:
             raise ValueError('You shall pass instances when prefit is False')
         
-        elif self._prefit==False and instances:
+        elif self._prefit==False and instances is not None:
             
-            self._instances_sanity_check(instances)
+            self.__instances_sanity_check(instances)
             self.__estimators_instances_sanity_check(self._estimators,instances,self._prefit)
             
-            for estimator,X in self._estimators,instances:
-                estimator.fit(X)
+            for estimator,X in zip(self._estimators,instances):
+                estimator.fit(X,labels)
 
         
     def predict(self, instances):
-        
-        #TODO: check label encoder is fitted
-        
+                
         for estimator in self._estimators:
             check_is_fitted(estimator)
         
@@ -70,7 +74,7 @@ class StackClassifiers:
         return assigned_labels
 
     
-    def _decisionRule(self,predictions):
+    def _majorityVoting(self,predictions):
         
         #Majority rule
         #Do not break the tie - First occurences is taken
@@ -78,7 +82,12 @@ class StackClassifiers:
             np.bincount(x, weights=self._weights)),
             axis=1, arr=predictions)
         
-        predictedLabels = self._le.inverse_transform(maj)
+        return maj    
+
+    def _decisionRule(self,predictions):
+                
+        decisions = self._rule(predictions)
+        predictedLabels = self._le.inverse_transform(decisions)
         
         return predictedLabels
     
