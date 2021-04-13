@@ -11,11 +11,11 @@ import math
 
 class eabc_modelGen:
     
-    def __init__(self,k=5,l=5,CROSS_PR=0.33,UNION_PR=0.33,RANDOM_PR=0.33, SWAP_PR=0.15,seed=None):
+    def __init__(self,k=5,l=5, randomModelMaxCard = 100, CROSS_PR=0.33,UNION_PR=0.33,RANDOM_PR=0.33, SWAP_PR=0.15,seed=None):
         
         self._K = k #Num random model to create 
         self._L = l #Num model created from previous K model by recombination
-        self._maxLen = 100;
+        self._maxLen = randomModelMaxCard;
         
         self._CROSS_PR = CROSS_PR
         self._UNION_PR = UNION_PR
