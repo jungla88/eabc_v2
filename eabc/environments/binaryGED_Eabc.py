@@ -8,7 +8,7 @@ Created on Tue Dec 15 11:44:14 2020
 
 from eabc.representatives import Medoid
 from eabc.dissimilarities import BMF
-from eabc.granulators import BsasBinarySearch
+from eabc.granulators import BsasKneeSearch
 
 import numpy as np
 from deap import tools
@@ -218,7 +218,7 @@ class eabc:
         graphDist.edgeInsWeight=wEIns
         graphDist.edgeDelWeight=wEDel
         
-        granulationStrategy = BsasBinarySearch(graphDist,Repr,0.1)
+        granulationStrategy = BsasKneeSearch(graphDist,Repr,0.1)
         granulationStrategy.BsasQmax = Q
         granulationStrategy.symbol_thr = tau
         ####ETA

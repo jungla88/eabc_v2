@@ -6,6 +6,7 @@ import pickle
 import multiprocessing
 from functools import partial
 import copy
+import argparse
 
 from sklearn.neighbors import KNeighborsClassifier as KNN
 from sklearn.metrics import confusion_matrix,balanced_accuracy_score
@@ -293,36 +294,114 @@ def main(dataTR,dataVS,dataTS,
 
 if __name__ == "__main__":
 
+    parser = argparse.ArgumentParser()
+       
+    ###
+    parser.add_argument("-name", type=str,
+                    help="Dataset name")    
+    parser.add_argument("-W", type=str,
+                    help="Number of subgraphs per agent")    
+
+    parser.add_argument("-g", "--max_gen", type=int, default = 20, help="Maximum number of generations",
+                    action="store")
+
+    parser.add_argument("-cb", "--class_bucket_card", default = 50, type = int,  help="Class bucket cardinality",
+                    action="store")
+
+    parser.add_argument("-mb", "--model_bucket_card", type = int, default = 10, help="Number of best model for each generation to retain",
+                    action="store")
+
+    parser.add_argument("-nrm", "--num_random_model", type = int, default = 10,  help="Random models to create per generation",
+                    action="store")
+    
+    parser.add_argument("-nrecm", "--num_recombined_model", type = int, default = 20, help="Recombined model to create per generation",
+                    action="store")
+    
+    parser.add_argument("-s", "--seed", type = int, help="Seed for random procedures",
+                    action="store")
+
+    parser.add_argument("-mu", "--num_parents_ind", type = int, default = 10, help="Number of parents in genetic algorithm",
+                    action="store")
+    
+    parser.add_argument("-lambda", "--num_offspring_ind", type = int, default = 30, help="Number of offspring in genetic algorithm",
+                    action="store")
+
+    parser.add_argument("-o", "--subgraphs_order", type = int, default = 5, help="Maximum order of extracted subgraphs",
+                    action="store")
+
+    parser.add_argument("-cxp", "--crossover_prob", type = float, default = 0.5, help="Crossover probability",
+                    action="store")
+
+    parser.add_argument("-mutp", "--mutation_prob", type = float, default = 0.3, help="Mutation probability",
+                    action="store")
+
+    parser.add_argument("-tourn", "--tournament_size", type = int, default = 3, help="Tournament size",
+                    action="store")    
+
+    parser.add_argument("-indmtp", "--ind_mutation_prob", type = float, default = 0.5, help="Individual slice of genetic code mutation probability",
+                    action="store")    
+    parser.add_argument("-indcxp", "--ind_crossover_prob", type = float, default = 0.5, help="Individual slice of genetic code crossover probability",
+                    action="store")        
+
+
+    args = parser.parse_args()
+    #Algorithm Hyper Params
+    name = args.name
+    N_subgraphs = args.W
+    ngen = args.max_gen
+    classBucketCard = args.class_bucket_card
+    bestModelsCard = args.model_bucket_card
+    numRandModel = args.num_random_model
+    numRecombModel = args.num_recombined_model
+    
+    #Genetic Hyper Params
+    mu = args.num_parents_ind
+    lambda_= args.num_offspring_ind
+    maxorder = args.subgraphs_order
+    CXPROB = args.crossover_prob
+    MUTPROB = args.mutation_prob
+    INDCXP = args.ind_crossover_prob
+    INDMUTP = args.ind_mutation_prob
+    TOURNSIZE = args.tournament_size
+    seed = args.seed
+
     # Parameter setup
     # They should be setted by cmd line
-    seed = 0
+#    seed = 0
     random.seed(seed)
     npRng = np.random.default_rng(seed)
 
-    path = "/home/luca/Documenti/Progetti/E-ABC_v2/eabc_v2/Datasets/IAM/Letter3/"
-    name = "LetterH"
-    # path = "/home/luca/Documenti/Progetti/E-ABC_v2/eabc_v2/Datasets/IAM/GREC/"
-    # name = "GREC"  
-    # path = "/home/luca/Documenti/Progetti/E-ABC_v2/eabc_v2/Datasets/IAM/AIDS/"
-    # name = "AIDS" 
+   
+    if name == 'LetterH':        
+        path = "/home/luca/Documenti/Progetti/E-ABC_v2/eabc_v2/Datasets/IAM/Letter3/"
+    elif name == 'LetterM':
+        path = "/home/luca/Documenti/Progetti/E-ABC_v2/eabc_v2/Datasets/IAM/Letter2/"
+    elif name == 'LetterL':
+        path = "/home/luca/Documenti/Progetti/E-ABC_v2/eabc_v2/Datasets/IAM/Letter1/"
+    elif name == 'GREC':
+        path = "/home/luca/Documenti/Progetti/E-ABC_v2/eabc_v2/Datasets/IAM/GREC/"
+    elif name == 'AIDS':
+        path = "/home/luca/Documenti/Progetti/E-ABC_v2/eabc_v2/Datasets/IAM/AIDS/"
+
     
     #Algorithm Hyper Params
-    N_subgraphs = 20
-    ngen = 20
-    classBucketCard = 20
-    bestModelsCard = 10
-    numRandModel = 10
-    numRecombModel = 10
+    # N_subgraphs = 20
+    # ngen = 20
+    # classBucketCard = 20
+    # bestModelsCard = 10
+    # numRandModel = 10
+    # numRecombModel = 10
     
-    #Genetic Hyper Params
-    mu = 5
-    lambda_= 5
-    maxorder = 5
-    CXPROB = 0.45
-    MUTPROB = 0.45
-    INDCXP = 0.3
-    INDMUTP = 0.3
-    TOURNSIZE = 3
+    # #Genetic Hyper Params
+    # mu = 5
+    # lambda_= 5
+    # maxorder = 5
+    # CXPROB = 0.45
+    # MUTPROB = 0.45
+    # INDCXP = 0.3
+    # INDMUTP = 0.3
+    # TOURNSIZE = 3
+    
     QMAX = 500
     Parallel = True
     
