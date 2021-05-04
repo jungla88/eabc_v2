@@ -210,7 +210,10 @@ class eabc:
         
         Repr=Medoid
     
-        graphDist=BMF(diss.nodeDissimilarity,diss.edgeDissimilarity)
+        #graphDist=BMF(diss.nodeDissimilarity,diss.edgeDissimilarity)
+        #DEBUG
+        graphDist=BMF(diss)
+        
         graphDist.nodeSubWeight=wNSub
         graphDist.nodeInsWeight=wNIns
         graphDist.nodeDelWeight=wNDel

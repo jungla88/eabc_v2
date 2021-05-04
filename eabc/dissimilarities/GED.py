@@ -30,16 +30,25 @@ from scipy import special
 
 class BMF(Dissimilarity):
 
-    def __init__(self, nodeDiss, edgeDiss):
+    # def __init__(self, nodeDiss, edgeDiss):
+        
+    def __init__(self, dissNodeEdgeObj):        
 
         """ User Defined Node/Edges dissimilarity """
-        self._nodeDiss = nodeDiss
-        self._edgeDiss = edgeDiss
+        self._ObjDiss = dissNodeEdgeObj
+        self._nodeDiss = self._ObjDiss.nodeDissimilarity
+        self._edgeDiss = self._ObjDiss.edgeDissimilarity
+
+        # self._nodeDiss = nodeDiss
+        # self._edgeDiss = edgeDiss
 
         """Default cost Parameters """
         self._nodesParam = {'sub': 1.0, 'del': 1.0, 'ins': 1.0}
         self._edgesParam = {'sub': 1.0, 'del': 1.0, 'ins': 1.0}
 
+    @property
+    def nodeEdgeObj(self):
+        return self._ObjDiss
 
     @property
     def nodeInsWeight(self):

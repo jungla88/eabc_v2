@@ -119,8 +119,6 @@ def main(dataTR,dataVS,dataTS,
                 #Temporary save overlength alphabet
                 ClassAlphabets[swarmClass] = ClassAlphabets[swarmClass] + alphabet
                 
-
-
             #Merging all class buckets
             mergedClassAlphabets = sum(ClassAlphabets.values(),[])            
 
@@ -227,7 +225,8 @@ def main(dataTR,dataVS,dataTS,
             for swarmClass in classes:
                 
                 #reward symbols in the same metric
-                consensusRewarder.applyConsensus(population[swarmClass],ClassAlphabets[swarmClass])                
+                #consensusRewarder.applyConsensus(population[swarmClass],ClassAlphabets[swarmClass])
+                consensusRewarder.applyConsensus(ClassAlphabets[swarmClass])                
                 
                 #reward agent
                 rewarder.applyAgentReward(population[swarmClass],ClassAlphabets[swarmClass])

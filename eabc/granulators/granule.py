@@ -24,7 +24,8 @@ class Granule:
         self._epsilon = epsilon
         
         #Added for store agent property
-        self._ownerID = None
+        self._ownerID = None       
+        self._classLbl = None
         
         #Better evaluate F externally?
 #        self._Fweight = eta
@@ -104,6 +105,14 @@ class Granule:
     @owner.setter
     def owner(self,val):
         self._ownerID = val
+        
+    #Test
+    @property
+    def classLbl(self):
+        return self._classLbl
+    @classLbl.setter
+    def classLbl(self,val):
+        self._classLbl = val    
 
     # @property
     # def effectiveRadius(self):
