@@ -6,13 +6,13 @@ Created on Wed Mar 31 11:27:11 2021
 @author: luca
 """
 
-# def getParams(agents,datasetName):
+def getAgentGEDParams(agent,datasetName):
 
-#     p = agents[1:7]    
-#     if datasetName == "GREC":
-#         p = p + agents[8:13]
+    p = agent[1:7]    
+    if datasetName == "GREC":
+        p = p + agent[8:13]
     
-#     return p
+    return p
     
 
 def getParams(symbol,datasetName):

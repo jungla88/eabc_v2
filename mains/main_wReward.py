@@ -54,6 +54,7 @@ def main(dataTR,dataVS,dataTS,
     rewarder = Rewarder(MAX_GEN= ngen)
 
     gedParams = partial(GEDretriever.getParams,datasetName= name)
+    gedAgentParams = partial(GEDretriever.getAgentGEDParams,datasetName= name)
     consensusRewarder = consensusStrategy(gedParams)
     ##################
     classes= dataTR.unique_labels
@@ -118,6 +119,11 @@ def main(dataTR,dataVS,dataTS,
 
                 #Temporary save overlength alphabet
                 ClassAlphabets[swarmClass] = ClassAlphabets[swarmClass] + alphabet
+                
+                ##DEBUG
+                #Symbols obtained in the same spaces will be both reward if they are similar
+                consensusRewarder.applyConsensus(ClassAlphabets[swarmClass])
+                
                 
             #Merging all class buckets
             mergedClassAlphabets = sum(ClassAlphabets.values(),[])            
@@ -226,7 +232,7 @@ def main(dataTR,dataVS,dataTS,
                 
                 #reward symbols in the same metric
                 #consensusRewarder.applyConsensus(population[swarmClass],ClassAlphabets[swarmClass])
-                consensusRewarder.applyConsensus(ClassAlphabets[swarmClass])                
+                #consensusRewarder.applyConsensus(ClassAlphabets[swarmClass])                
                 
                 #reward agent
                 rewarder.applyAgentReward(population[swarmClass],ClassAlphabets[swarmClass])
@@ -236,10 +242,27 @@ def main(dataTR,dataVS,dataTS,
                 ClassAlphabets[swarmClass] = [x for x in ClassAlphabets[swarmClass] if x.quality>= 0 ]
                 #thresholding up until classBucketCard
                 ClassAlphabets[swarmClass] = sorted(ClassAlphabets[swarmClass],key=lambda x: x.quality,reverse = True)[:classBucketCard]                  
-                          
+                                
                 # Select the next generation population for the current swarm
                 if gen > 0:
-                    population[swarmClass][:] = toolbox.select(population[swarmClass], mu)
+                    
+                    ## Apply elitism for corresponding symbols/agent with high quality
+                    ## We lookup in ClassAlphabets the symbols with higher quality
+                    ## Then according to the metric, we apply elitism to agents that created that symbols
+                    bestMsymbols = sorted(ClassAlphabets[swarmClass],key=lambda x: x.quality,reverse = True)[:5]
+                    p = [gedParams(symbol) for symbol in bestMsymbols]
+                    p_agents = [gedAgentParams(agent) for agent in population[swarmClass]]
+                    
+                    #Elite
+                    matchedIndividuals = [i for i,code in enumerate(p_agents) if code in p]
+                    eliteInd = [population[swarmClass][index] for index in matchedIndividuals]
+                    othersInd = [population[swarmClass][i] for i,agent in enumerate(population[swarmClass]) if i not in matchedIndividuals]
+                
+                    population[swarmClass][:] = toolbox.select(othersInd, mu)
+                    population[swarmClass] = population[swarmClass] + eliteInd 
+
+                # if gen > 0:
+                #     population[swarmClass][:] = toolbox.select(population[swarmClass], mu)
                 
                 #Save population at g = gen
                 LogAgents[gen][swarmClass].append([population[swarmClass],ClassAlphabets[swarmClass]])
