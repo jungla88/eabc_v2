@@ -7,9 +7,10 @@ import multiprocessing
 from functools import partial
 import copy
 import argparse
-
+from itertools import groupby
 from sklearn.neighbors import KNeighborsClassifier as KNN
 from sklearn.metrics import confusion_matrix,balanced_accuracy_score
+
 
 from Datasets.IAM import IamDotLoader
 from Datasets.IAM import Letter,GREC,AIDS
@@ -249,14 +250,32 @@ def main(dataTR,dataVS,dataTS,
                     ## Apply elitism for corresponding symbols/agent with high quality
                     ## We lookup in ClassAlphabets the symbols with higher quality
                     ## Then according to the metric, we apply elitism to agents that created that symbols
-                    bestMsymbols = sorted(ClassAlphabets[swarmClass],key=lambda x: x.quality,reverse = True)[:5]
-                    p = [gedParams(symbol) for symbol in bestMsymbols]
-                    p_agents = [gedAgentParams(agent) for agent in population[swarmClass]]
+                    #ClassAlphabets[swarmClass] = sorted(ClassAlphabets[swarmClass],key=lambda x: x.quality,reverse = True)
+                    ####
+                    M_bestSym = 5
+                    #Best unique metric in bucket
+                    p = [tuple(gedParams(symbol)) for symbol in ClassAlphabets[swarmClass]]
+                    # Must be hashable to apply set()
+                    p = list(set(p))[:M_bestSym]
+                    p = list(map(list,p))
+                    #p_agents = [tuple(gedAgentParams(agent)) for agent in population[swarmClass]]
                     
                     #Elite
-                    matchedIndividuals = [i for i,code in enumerate(p_agents) if code in p]
-                    eliteInd = [population[swarmClass][index] for index in matchedIndividuals]
-                    othersInd = [population[swarmClass][i] for i,agent in enumerate(population[swarmClass]) if i not in matchedIndividuals]
+                    eliteInd = []
+                    # groupby() can group contiguos elements. We sort before apply it
+                    for commonMetric,group in groupby(sorted(population[swarmClass], key = lambda x:gedAgentParams(x)),gedAgentParams):
+                        if commonMetric in p:
+                            group = list(group)
+                            bestInd = sorted(group, key = lambda x: x.fitness.values[0],reverse = True)[0]
+                            eliteInd.append(bestInd)
+                    
+                        
+                    # matchedIndividuals = [i for i,code in enumerate(p_agents) if code in p]
+                    # eliteInd = [population[swarmClass][index] for index in matchedIndividuals]
+                    # eliteInd = sorted(eliteInd, key = lambda x: x.fitness.values[0],reverse = True)[:M_bestSym]                    
+                    # othersInd = [population[swarmClass][i] for i,agent in enumerate(population[swarmClass]) if i not in matchedIndividuals]
+                
+                    othersInd = [ population[swarmClass][i] for i,agent in enumerate(population[swarmClass]) if agent not in eliteInd ]    
                 
                     population[swarmClass][:] = toolbox.select(othersInd, mu)
                     population[swarmClass] = population[swarmClass] + eliteInd 

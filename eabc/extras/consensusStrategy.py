@@ -55,7 +55,7 @@ class consensusStrategy:
 
     def applyConsensus(self,symbols):
 
-        for commonMetric,group in groupby(symbols,self._GEDretr):
+        for commonMetric,group in groupby(sorted(symbols, key = lambda x: self._GEDretr(x)),self._GEDretr):
             
             symbols_group = tuple(group)
             diss = symbols_group[0].dissimilarity
