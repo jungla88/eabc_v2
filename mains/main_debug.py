@@ -51,14 +51,17 @@ def main(dataTR,dataVS,dataTS,
     
     print("Setup...")
     #Instance objects
-    model_generator = eabc_modelGen(k=numRandModel,l=numRecombModel,seed=seed)
-    rewarder = Rewarder(MAX_GEN= ngen)
-
+    
     gedParams = partial(GEDretriever.getParams,datasetName= name)
     gedAgentParams = partial(GEDretriever.getAgentGEDParams,datasetName= name)
     consensusRewarder = consensusStrategy(gedParams)
     ##################
     classes= dataTR.unique_labels
+    
+    model_generator = eabc_modelGen(k=numRandModel,l=numRecombModel,seed=seed)
+    #rewarder = Rewarder(MAX_GEN= ngen)
+    rewarder = Rewarder(numClasses= len(classes),MAX_GEN=ngen)
+    
     #Initialize a dict of swarms - {key:label - value:deap popolution}
     population = {thisClass:toolbox.population(n=mu) for thisClass in classes}
     #IDs class agents
@@ -213,10 +216,10 @@ def main(dataTR,dataVS,dataTS,
             
             ##### Debugging
             print("Debugging Ensemble on VS")
-            models = list(list(zip(*models))[0])
-            classifiers = list(list(zip(*models))[2])
+            modelsDebug = list(list(zip(*models))[0])
+            classifiersDebug = list(list(zip(*models))[2])
             VSembeddingSpaces = []
-            for model_ in models:
+            for model_ in modelsDebug:
                 
                 embeddingStrategy = SymbolicHistogram(isSymbolDiss=True,isParallel=Parallel)
                 
@@ -232,7 +235,7 @@ def main(dataTR,dataVS,dataTS,
                 VSembeddingSpaces.append(VSMat)
         
             print("Building ensemble of classifiers...")
-            ensembleClassifier = StackClassifier(classifiers,isPrefit=True)
+            ensembleClassifier = StackClassifier(classifiersDebug,isPrefit=True)
             ensembleClassifier.fit(labels=dataTR.labels)
             predictedVSLabels = ensembleClassifier.predict(VSembeddingSpaces)
             VS_ensemble_res = accuracy_score(dataVS.labels,predictedVSLabels)
@@ -253,7 +256,7 @@ def main(dataTR,dataVS,dataTS,
             ####
             
             #Test adaptive reward
-            rewarder.evaluateReward(modelsForRewardEval)
+            #rewarder.evaluateReward(modelsForRewardEval)
             
             #Apply it 
             rewarder.applySymbolReward(modelsToReward)
@@ -365,7 +368,7 @@ def main(dataTR,dataVS,dataTS,
     print("Accuracy on TS: {}".format(accuracyTS))    
        
     
-    return LogAgents,LogPerf,ClassAlphabets,previousModels,previousModelsPerf,previousClassifiers,ensembleClassifier,TSembeddingSpaces,predictedTSLabels,dataTR.labels,dataVS.labels,dataTS.labels,expTRSet,expVSSet,expTSSet,ensemble_log
+    return LogAgents,LogPerf,ClassAlphabets,previousModels,previousModelsPerf,previousClassifiers,ensembleClassifier,TSembeddingSpaces,predictedTSLabels,dataTR.labels,dataVS.labels,dataTS.labels,expTRSet,expVSSet,expTSSet,ensemble_log,accuracyTS
 
 if __name__ == "__main__":
 
@@ -589,10 +592,14 @@ if __name__ == "__main__":
     finalEOC = data[6]
     testEmbeddings = data[7]
     predictedTSLabels = data[8]
-    expTRSet = data[9]
-    expVSSet = data[10]
-    expTSSet = data[11]
-    ensemble_log = data[12]
+    TRlabels = data[9]
+    VSlabels = data[10]
+    TSlabels = data[11]
+    expTRSet = data[12]
+    expVSSet = data[13]
+    expTSSet = data[14]
+    ensemble_log = data[15]
+    accuracy_TS = data[16]
     
 
     pickle.dump({'Name': name,
@@ -615,15 +622,17 @@ if __name__ == "__main__":
                 'Agents':LogAgents,
                 'PerformancesTraining':LogPerf,
                 'ClassAlphabets':ClassAlphabets,
-                'TRlabels':dataTR.labels,
-                'VSlabels':dataVS.labels,
+                'TRlabels':TRlabels,
+                'VSlabels':VSlabels,
                 'predictedTS':predictedTSLabels,
-                'TSlabels':dataTS.labels,
+                'TSlabels':TSlabels,
+                'accuracy_TS':accuracy_TS,
                 'N_subgraphs':N_subgraphs,
                 'N_gen':ngen,
                 'Mu':mu,
                 'lambda':lambda_,
-                'max_order':maxorder
+                'max_order':maxorder,
+                'command_line_args':args
                 },
                 open(name+'.pkl','wb'))
     

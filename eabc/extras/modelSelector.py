@@ -45,7 +45,7 @@ class eabc_modelGen:
             #For each class alphabet extract some symbols
             for class_ in alphabet.keys():
                               
-#                    p = self._extractProb(alphabet[class_])        
+#               p = self._extractProb(alphabet[class_])        
 
                 #Set model cardinality
                 if N > len(alphabet[class_]):

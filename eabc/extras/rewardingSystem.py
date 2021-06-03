@@ -4,7 +4,8 @@ from sklearn.preprocessing import MinMaxScaler
 from scipy.stats import norm
 
 class Rewarder:
-    def __init__(self,MAX_GEN=20, isBootStrapped = True):
+#    def __init__(self,MAX_GEN=20, isBootStrapped = True):
+    def __init__(self, numClasses,quantLevel = None ,MAX_GEN=20, isBootStrapped = True,maxReward = 10,minReward = -10):        
         
         #Max generation
         self.MAX_GEN = MAX_GEN
@@ -14,10 +15,18 @@ class Rewarder:
         self._modelWeight = 0
         self._isBootStrapped = isBootStrapped
         
+        #Build reward table based on number of classes
+        self._numClasses = numClasses
+        self._quantizationLevel = quantLevel
+        self._maxReward = maxReward
+        self._minReward = minReward   
+
+        self._buildRewTable()
+     
         #Test reward with mean and var
-        self._meanModelPerformances = None
-        self._stdModelPerformances = None
-        self._scaleFactor = 10
+        # self._meanModelPerformances = None
+        # self._stdModelPerformances = None
+        # self._scaleFactor = 10
         
     @property
     def Gen(self):
@@ -38,15 +47,33 @@ class Rewarder:
     def isBootStrapped(self):
         return self._isBootStrapped
     
+    def _buildRewTable(self):
+        
+        if self._quantizationLevel is None:
+            self._quantizationLevel = self._numClasses
+        
+        self._rewardTable = np.linspace(self._minReward,self._maxReward,self._quantizationLevel)
+        self._lookupTable = np.linspace(0,1,self._quantizationLevel,endpoint=False)
+                
     
-    def evaluateReward(self,models_with_performance):
+    def applySymbolReward(self,models_with_performance):
         
-        p = np.asarray([perf for _,perf in models_with_performance])
+        for model,performance in models_with_performance:
+            for symbol in model:
+                
+                #Take the last index in lookupTable which grant a the condition   
+                range_ = np.where(self._lookupTable <= performance)[0][-1]
+                reward = self._rewardTable[range_]
+                symbol.quality = symbol.quality + reward
+                
+    # def evaluateReward(self,models_with_performance):
         
-        self._meanModelPerformances = p.mean()
-        self._stdModelPerformances = p.std()
+    #     p = np.asarray([perf for _,perf in models_with_performance])
         
-
+    #     self._meanModelPerformances = p.mean()
+    #     self._stdModelPerformances = p.std()
+        
+    # Initial test user-defined reward
     # def applySymbolReward(self,models_with_performance):
         
     #     for model,performance in models_with_performance:
@@ -58,22 +85,22 @@ class Rewarder:
     #                 else:
     #                      symbol.quality = symbol.quality+1
 
-    def applySymbolReward(self,models_with_performance):
+    # def applySymbolReward(self,models_with_performance):
         
-        for model,performance in models_with_performance:
+    #     for model,performance in models_with_performance:
             
-            pVal  = norm.pdf(performance,self._meanModelPerformances,self._stdModelPerformances)
-            valAtmean = norm.pdf(self._meanModelPerformances,self._meanModelPerformances,self._stdModelPerformances)
+    #         pVal  = norm.pdf(performance,self._meanModelPerformances,self._stdModelPerformances)
+    #         valAtmean = norm.pdf(self._meanModelPerformances,self._meanModelPerformances,self._stdModelPerformances)
             
-            for symbol in model:
+    #         for symbol in model:
                 
-                if performance >= self._meanModelPerformances + self._stdModelPerformances:
+    #             if performance >= self._meanModelPerformances + self._stdModelPerformances:
 
-                    symbol.quality = symbol.quality +  self._scaleFactor*(valAtmean - pVal)
+    #                 symbol.quality = symbol.quality +  self._scaleFactor*(valAtmean - pVal)
                     
-                elif performance <= self._meanModelPerformances - self._stdModelPerformances:
+    #             elif performance <= self._meanModelPerformances - self._stdModelPerformances:
                     
-                    symbol.quality = symbol.quality - self._scaleFactor*(valAtmean - pVal)
+    #                 symbol.quality = symbol.quality - self._scaleFactor*(valAtmean - pVal)
                     
 
     def applyAgentReward(self,agents,alphabet):
