@@ -18,7 +18,7 @@ from eabc.datasets import graph_nxDataset
 from eabc.extractors import Extractor
 from eabc.extractors import randomwalk_restart
 from eabc.embeddings import SymbolicHistogram
-from eabc.environments.binaryGED_Eabc import eabc
+from eabc.environments.binaryGED_Eabc_noKnee import eabc
 #TOBE MOVED
 from eabc.extras import eabc_modelGen
 from eabc.extras import Rewarder
@@ -124,6 +124,17 @@ def main(dataTR,dataVS,dataTS,
 
                 #Temporary save overlength alphabet
                 ClassAlphabets[swarmClass] = ClassAlphabets[swarmClass] + alphabet
+                
+                print("Total symbols\tmax Fvalue\tmin Fvalue\tMin Cardinality\tMax Cardinality\tMin Comp\tMax Comp")
+                card = []
+                comp = []
+                Fval = []
+                for symbol in ClassAlphabets[swarmClass]:
+                    card.append(symbol.card)
+                    comp.append(symbol.comp)
+                    Fval.append(symbol.Fvalue)
+                    
+                print("{}\t{}\t{}\t{}\t{}\t{}\t{}".format(len(ClassAlphabets[swarmClass]),round(max(Fval),3),round(min(Fval),3),round(max(card),3),round(min(card),3),round(max(comp),3),round(min(comp),3)))
                 
                 ##DEBUG
                 #Symbols obtained in the same spaces will be both reward if they are similar
@@ -611,6 +622,6 @@ if __name__ == "__main__":
                 'max_order':maxorder,
                 'command_line_args':args
                 },
-                open(name+'_'+runID+'.pkl','wb'))
+                open(name+'_'+ runID+ N_subgraphs+'.pkl','wb'))
     
     
