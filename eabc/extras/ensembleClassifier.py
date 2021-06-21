@@ -1,144 +1,136 @@
-# -*- coding: utf-8 -*-
-
 import numpy as np
-from sklearn import preprocessing
+from sklearn.model_selection import cross_val_score
+from sklearn.model_selection import RepeatedStratifiedKFold
+from numpy import mean ,std
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.ensemble import VotingClassifier, RandomForestClassifier,StackingClassifier
+from sklearn.svm import SVC
+from sklearn.metrics import f1_score
+from sklearn.preprocessing import OneHotEncoder,LabelEncoder
 from sklearn.utils.validation import check_X_y, check_array, check_is_fitted,_is_arraylike
 import warnings 
 
-class StackClassifier:
+class ensemble_cl:
+
+    models = dict()
+    models['RF'] = RandomForestClassifier()
+    models['knn'] = KNeighborsClassifier()
+    models['linear_svc'] = SVC(kernel='linear')
+    models['poly_svc'] = SVC(kernel='poly')
+    models['rbf_svc'] = SVC(kernel='rbf')
     
-    def __init__(self,estimators = None, isPrefit = True, weights=None,decisionRule = None):
-        
-        self.__estimators_sanity_check(estimators,isPrefit)
-        
-        self._estimators = estimators        
-        self._prefit = isPrefit
+    level0 = list()
+    level0.append(('RF', RandomForestClassifier()))
+    level0.append(('knn', KNeighborsClassifier()))
+    level0.append(('linear_svc', SVC(kernel='linear')))
+    level0.append(('poly_svc', SVC(kernel='poly')))
+    level0.append(('rbf_svc', SVC(kernel='rbf')))
     
-        self._le = None
+    def __init__(self,X_train,y_train,X_test,y_test):
+        self.X_train=X_train
+        self.y_train=y_train
+        self.X_test=X_test
+        self.y_test=y_test
+        self.le = None
+        self.Oe=None
         self._classes = None
-        self._weights = None
-        
-        self._rule = self._majorityVoting
-        if decisionRule is not None:
-            self._rule = decisionRule        
-        
-    def fit(self,instances=None,labels=None):
-
-        if labels is None:
-            raise ValueError('labels must be passed')
-
-        self._le = preprocessing.LabelEncoder().fit(labels)
-        self._classes = self._le.transform(self._le.classes_)
-        
-        if self._prefit==True and instances is not None:
-            warnings.warn("Ignoring passed instances",RuntimeWarning)
-            
-        elif self._prefit==False and instances is None:
-            raise ValueError('You shall pass instances when prefit is False')
-        
-        elif self._prefit==False and instances is not None:
-            
-            self.__instances_sanity_check(instances)
-            self.__estimators_instances_sanity_check(self._estimators,instances,self._prefit)
-            
-            for estimator,X in zip(self._estimators,instances):
-                estimator.fit(X,labels)
-
-        
-    def predict(self, instances):
-                
-        for estimator in self._estimators:
-            check_is_fitted(estimator)
-        
-        self.__estimators_instances_sanity_check(self._estimators,instances,isFitted=True)
-        
-        self.__instances_sanity_check(instances)
         
         
-        #Instances must be a container of numpy matrices representing the embedding vectors
-        n_samples_instances = np.array([len(data) for data in instances])
-        if not np.all(n_samples_instances==n_samples_instances[0]):
-            raise ValueError("Data container has different number of samples, cannot predict in ensemble")
-        n_patterns = instances[0].shape[0]
-                
-        #stackPrediction is an N-pattern by number-of-estimators matrix containing
-        #the labels of each pattern predicted by each estimator 
-        stackPredictions = np.empty(shape=(n_patterns,len(self._estimators)),dtype=np.int16)
-        for i,(data_array,estimator) in enumerate(zip(instances,self._estimators)):
-            
-            predicted_labels = estimator.predict(data_array)
-            stackPredictions[:,i] = self._le.transform(predicted_labels)
+        # prepare input data
+        #The input to this transformer should be an array-like of integers or strings,
+        # denoting the values taken on by categorical (discrete) features.
+        # The features are converted to ordinal integers.
+        # This results in a single column of integers (0 to n_categories - 1) per feature.
         
-        assigned_labels = self._decisionRule(stackPredictions)
-                               
-        return assigned_labels
+    def prepare_inputs(self,X_train,X_test):
+        self.Oe = OneHotEncoder(sparse=False,handle_unknown = 'ignore')
+        self.Oe.fit(self.X_train)
+        X_train_enc = self.Oe.transform(self.X_train)
+        X_test_enc = self.Oe.transform(self.X_test)
+        return X_train_enc, X_test_enc
+    
+    # prepare target
+    def prepare_targets(self,y_train,y_test):
+        self.le = LabelEncoder()
+        self.le.fit(self.y_train)
+        y_train_enc = self.le.transform(self.y_train)
+        y_test_enc = self.le.transform(self.y_test)
+        return y_train_enc, y_test_enc
 
     
-    def _majorityVoting(self,predictions):
+     # get a stacking ensemble of models
+    def get_stacking(self,final_estimator=SVC(kernel='linear'),cv=5,vote='hard'):
         
-        #Majority rule
-        #Do not break the tie - First occurences is taken
-        maj = np.apply_along_axis(lambda x: np.argmax(
-            np.bincount(x, weights=self._weights)),
-            axis=1, arr=predictions)
-        
-        return maj    
-
-    def _decisionRule(self,predictions):
-                
-        decisions = self._rule(predictions)
-        predictedLabels = self._le.inverse_transform(decisions)
-        
-        return predictedLabels
+        self.models['stacking'] = StackingClassifier(estimators=self.level0, final_estimator=final_estimator, cv=cv)  
+        self.models['voting']= VotingClassifier(self.level0, voting=vote)
+        self.models['voting_stacking'] = StackingClassifier(estimators=self.level0, final_estimator=self.models['voting'], cv=cv)
+     
+    def evaluate_model_encoded_inputs(self,model):
+        self.X_train_enc, self.X_test_enc = self.prepare_inputs(self.X_train, self.X_test)
+        self.y_train_enc, self.y_test_enc = self.prepare_targets(self.y_train, self.y_test)
+        cv = RepeatedStratifiedKFold(n_splits=10, n_repeats=3, random_state=1)
+        scores = cross_val_score(model, self.X_train_enc, self.y_train_enc, scoring='accuracy', cv=cv, n_jobs=-1, error_score='raise')
+        return scores
     
-    @staticmethod
-    def __estimators_sanity_check(estimators,prefit):
-        
-        if _is_arraylike(estimators):           
-            for estimator in estimators:
-                
-                if prefit:
-                    check_is_fitted(estimator)
-        else:
-            raise TypeError('Expected a sequence like container of estimators,got {}'.format(type(estimators)))
-
-    @staticmethod
-    def __estimators_instances_sanity_check(estimators,instances,isFitted):
-        
-        
-        if _is_arraylike(instances):
-            
-            if not(len(instances)==len(estimators)):
-                raise ValueError('Expected same number of data with respect to number of estimators, got {} estimators and {} data matrices'.format(len(estimators),len(instances)))
-            
-            for data,estimator in zip(instances,estimators):
-                
-                if _is_arraylike(data):
-                    
-                    if isFitted:
-                        
-                        if estimator.n_features_in_!= len(data[0]):
-                            raise ValueError('Estimator is fitted in {}-dim feature space, data is {}'.format(estimator.n_features_in_,len(data[0])))
-                        
-                    
-                else:
-                    raise TypeError('Expected an array like data,got {}'.format(type(data)))
-                
-            
-        else:
-            raise TypeError('Expected an array like container of matrices,got {}'.format(type(instances)))
+    def evaluate_model_raw(self,model):
+        cv = RepeatedStratifiedKFold(n_splits=10, n_repeats=3, random_state=1)
+        scores = cross_val_score(model, self.X_train, self.y_train, scoring='accuracy', cv=cv, n_jobs=-1, error_score='raise')
+        return scores
 
     
-    @staticmethod
-    def __instances_sanity_check(instances):
+    # evaluate the models and store results
+    #change the final estimator ?
+    # vote system ?
+    # cv ?
+    def result_encoded_inputs(self):
+        self.get_stacking(final_estimator=SVC(kernel='linear'),cv=5,vote='hard')
         
-        if _is_arraylike(instances):
+        results, names = list(), list()
+        for name, model in self.models.items():
+            scores = self.evaluate_model_encoded_inputs(model)
+            results.append(mean(scores))
+            names.append(name)
+            print('>%s %.3f (%.3f)' % (name, mean(scores), std(scores))) 
             
-            for data in instances:
+        class_optimum_accuracy=np.array(results)
+        optimum=names[np.argmax(class_optimum_accuracy)]
+        print(optimum)
+        predict=self.predict_enc(optimum)
+        return predict
+       
+    def result_raw(self):
+        self.get_stacking(final_estimator=SVC(kernel='linear'),cv=5,vote='hard')
+        
+        results, names = list(), list()
+        for name, model in self.models.items():
+            scores = self.evaluate_model_raw(model)
+            results.append(mean(scores))
+            names.append(name)
+            print('>%s %.3f (%.3f)' % (name, mean(scores), std(scores))) 
+            
+        class_optimum_accuracy=np.array(results)
+        optimum=names[np.argmax(class_optimum_accuracy)]
+        print(optimum)
+        predict=self.predict_raw(optimum)
+        return predict
+        
+    def predict_enc(self,model):
+        
+        self.X_train_enc, self.X_test_enc = self.prepare_inputs(self.X_train, self.X_test)
+        self.y_train_enc, self.y_test_enc = self.prepare_targets(self.y_train, self.y_test)
+        classifier = self.models[model].fit(self.X_train_enc,self.y_train_enc)
+        predict = classifier.predict(self.X_test_enc)
+        print(f1_score(self.y_test_enc, predict, average='macro'))
+        return  predict
+       
+        
+    def predict_raw(self,model):
+        
+        classifier = self.models[model].fit(self.X_train,self.y_train)
+        predict = classifier.predict(self.X_test)
+        print(f1_score(self.y_test, predict, average='macro'))
+        return  predict
                 
-                if _is_arraylike(data):
-                    
-                    if not isinstance(data,np.ndarray):
-                        
-                        data = np.asarray(data)
-                        
+   
+        
